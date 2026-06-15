@@ -639,6 +639,7 @@ const App = (() => {
     if (!ch) return;
     Storage.setLastChannel(ch.id);
     showView('player');          // Activa view-player (fondo transparente)
+    document.getElementById('view-player').focus(); // Importante para Tizen (capturar teclas y que no se las trague AVPlay)
     Player.play(ch, false);     // Reproduce en pantalla completa
   }
 
