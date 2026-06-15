@@ -12,7 +12,6 @@ const VirtualList = (() => {
   let _container   = null;
   let _items       = [];
   let _onSelect    = null;
-  let _onHover     = null;
   let _getFavBadge = null;
   let _getEpgNow   = null;
   let _focusedIdx  = 0;
@@ -20,12 +19,11 @@ const VirtualList = (() => {
   let _rafId       = null;
   let _domCache    = {};    // index → DOM element
 
-  function init({ containerId, items, onSelect, onHover, getFavBadge, getEpgNow }) {
+  function init({ containerId, items, onSelect, getFavBadge, getEpgNow }) {
     _container   = document.getElementById(containerId);
     if (_container) _container.innerHTML = ''; // FIX OVERLAPPING
     _items       = items;
     _onSelect    = onSelect;
-    _onHover     = onHover;
     _getFavBadge = getFavBadge;
     _getEpgNow   = getEpgNow;
     _focusedIdx  = 0;
@@ -63,7 +61,6 @@ const VirtualList = (() => {
     if (dir === 'right' && col < COLS - 1) next = Math.min(_items.length - 1, _focusedIdx + 1);
     if (dir === 'left' && col > 0)  next = Math.max(0, _focusedIdx - 1);
     if (next !== _focusedIdx) setFocused(next);
-    if (_items[_focusedIdx] && _onHover) _onHover(_items[_focusedIdx]);
   }
 
   function getItem(idx) { return _items[idx]; }
@@ -127,7 +124,6 @@ const VirtualList = (() => {
     const ch  = _items[i];
     const col = i % COLS;
     const row = Math.floor(i / COLS);
-    const x   = PADDING + col * ((_container.offsetWidth - PADDING * 2 - ITEM_GAP * (COLS - 1)) / COLS + ITEM_GAP);
     const colW = (_container.offsetWidth - PADDING * 2 - ITEM_GAP * (COLS - 1)) / COLS;
     const y   = PADDING + row * (ITEM_H + ITEM_GAP);
 
@@ -151,7 +147,7 @@ const VirtualList = (() => {
       `</div>`;
 
     el.addEventListener('click', () => { setFocused(i); _onSelect && _onSelect(ch); });
-    el.addEventListener('mouseenter', () => { setFocused(i); _onHover && _onHover(ch); });
+    el.addEventListener('mouseenter', () => { setFocused(i); });
     return el;
   }
 

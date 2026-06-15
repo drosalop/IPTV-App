@@ -9,7 +9,6 @@
  */
 const Player = (() => {
   let _current         = null;
-  let _clockTimer      = null;
   let _onChannelChange = null;
   let _state           = 'IDLE'; // IDLE | BUFFERING | PLAYING | ERROR
 
@@ -20,7 +19,6 @@ const Player = (() => {
     _initialized = true;
     _onChannelChange = onChannelChangeCb;
     _bindKeys();
-    _startClock();
   }
 
   // ── PLAY ─────────────────────────────────────────────
@@ -122,13 +120,7 @@ const Player = (() => {
     if (spinner) spinner.classList.toggle('hidden', s !== 'BUFFERING');
   }
 
-  // ── CLOCK ────────────────────────────────────────────
-  function _startClock() {
-    const update = () => _setText('overlay-time',
-      new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }));
-    update();
-    _clockTimer = setInterval(update, 15000);
-  }
+
 
   // ── KEY BINDINGS ─────────────────────────────────────
   function _bindKeys() {
@@ -170,14 +162,5 @@ const Player = (() => {
   function getCurrent()   { return _current; }
   function getState()     { return _state; }
   function _isActive()    { return document.getElementById('view-player')?.classList.contains('active'); }
-  function _setText(id, val) {
-    const el = document.getElementById(id);
-    if (el) el.textContent = val;
-  }
-  function _fmtRange(s, e) {
-    if (!s || !e) return '';
-    const f = d => d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-    return `${f(s)} – ${f(e)}`;
-  }
   return { init, play, stop, getCurrent, getState };
 })();
