@@ -77,7 +77,14 @@ const App = (() => {
     if (name === 'setup')    _initSetupView();
   }
 
-
+  function showToast(msg, type = 'info') {
+    const el = document.getElementById('toast');
+    if (!el) return;
+    el.textContent = msg;
+    el.className = `toast ${type}`;
+    clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(() => el.className = 'toast hidden', 3000);
+  }
 
   // ── SETUP ─────────────────────────────────────────────
   function _getSetupTabs() { return Array.from(document.querySelectorAll('#view-setup .tab-btn')); }

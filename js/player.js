@@ -14,16 +14,18 @@ const Player = (() => {
 
   let _initialized = false;
   // ── INIT ─────────────────────────────────────────────
-  function init(onChannelChangeCb) {
+  function init(onChannelChange) {
     if (_initialized) return;
     _initialized = true;
-    _onChannelChange = onChannelChangeCb;
+    _onChannelChange = onChannelChange;
     _bindKeys();
   }
 
   // ── PLAY ─────────────────────────────────────────────
   function play(ch) {
     if (!ch || !ch.url) return;
+    if (_current && _current.id !== ch.id) _retryCount = 0;
+    
     _safeStop();
     _current = ch;
     _setState('BUFFERING');
@@ -121,7 +123,7 @@ const Player = (() => {
 
   // ── EVENTS ───────────────────────────────────────────
   function _onBufferingStart()    { _setState('BUFFERING'); }
-  function _onBufferingComplete() { _setState('PLAYING'); }
+  function _onBufferingComplete() { _setState('PLAYING'); _retryCount = 0; }
 
   function _onError(err) {
     console.error('AVPlay error', err);
@@ -130,6 +132,19 @@ const Player = (() => {
 
   function _handleError() {
     _safeStop();
+
+    if (_isActive() && _current && _retryCount < 3) {
+      _retryCount++;
+      if (typeof App !== 'undefined' && App.showToast) {
+        App.showToast(`Error de conexión. Reconectando (${_retryCount}/3)...`, 'error');
+      }
+      setTimeout(() => {
+        if (_isActive() && _current) play(_current);
+      }, 2000);
+      return;
+    }
+
+    _retryCount = 0;
     const errEl = document.getElementById('player-error');
     if (errEl) errEl.classList.remove('hidden');
     setTimeout(() => { 
@@ -166,6 +181,11 @@ const Player = (() => {
     KeyHandler.on('LONG_OK',()=> { 
       if (_isActive() && _current) { 
         Favorites.toggle(_current.id); 
+        const isFav = Favorites.isFav(_current.id);
+        if (typeof App !== 'undefined' && App.showToast) {
+          App.showToast(isFav ? 'Añadido a favoritos' : 'Eliminado de favoritos', isFav ? 'success' : 'info');
+        }
+        showOSD(); 
         return true; 
       } 
     });
@@ -249,6 +269,15 @@ const Player = (() => {
     const name = document.getElementById('osd-name');
     if (name) name.textContent = _current.name || '';
 
+    const favIcon = document.getElementById('osd-fav-icon');
+    if (favIcon) {
+      if (typeof Favorites !== 'undefined' && Favorites.isFav(_current.id)) {
+        favIcon.classList.remove('hidden');
+      } else {
+        favIcon.classList.add('hidden');
+      }
+    }
+
     _updateEpgOSD();
 
     osd.classList.remove('hidden');
@@ -268,6 +297,11 @@ const Player = (() => {
     if (!_current) return;
     const nowEl = document.getElementById('osd-now');
     const nextEl = document.getElementById('osd-next');
+    const clockEl = document.getElementById('osd-clock');
+
+    if (clockEl) {
+      clockEl.textContent = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+    }
     
     let nowP = null;
     let nextP = null;
@@ -288,13 +322,19 @@ const Player = (() => {
       if (nowEl) nowEl.textContent = `Ahora: ${nowP.title} (${_fmt(nowP.start)} - ${_fmt(nowP.end)})`;
       if (nextEl) nextEl.textContent = nextP ? `Después: ${nextP.title} (${_fmt(nextP.start)} - ${_fmt(nextP.end)})` : '';
     } else {
-      if (nowEl) nowEl.textContent = 'Buscando programación...';
+      if (nowEl) nowEl.textContent = _current._shortEpgFetched ? 'Sin información de programación' : 'Buscando programación...';
       if (nextEl) nextEl.textContent = '';
     }
   }
 
   async function _fetchShortEpg(ch) {
-    if (!ch || !ch.shortEpgUrl) return;
+    if (!ch) return;
+    if (!ch.shortEpgUrl) {
+      ch._shortEpgFetched = true;
+      if (_current && _current.id === ch.id && !_osdTimer?.hidden) _updateEpgOSD();
+      return;
+    }
+    
     try {
       const res = await fetch(ch.shortEpgUrl);
       if (!res.ok) return;
@@ -323,16 +363,15 @@ const Player = (() => {
         
         if (nowP) {
           ch._shortEpgData = { nowP, nextP };
-          // If this is still the current channel and OSD is visible, update
-          if (_current && _current.id === ch.id) {
-            const osd = document.getElementById('player-osd');
-            if (osd && !osd.classList.contains('hidden')) {
-              _updateEpgOSD();
-            }
-          }
         }
       }
-    } catch (e) {}
+    } catch (e) {} finally {
+      ch._shortEpgFetched = true;
+      if (_current && _current.id === ch.id) {
+        const osd = document.getElementById('player-osd');
+        if (osd && !osd.classList.contains('hidden')) _updateEpgOSD();
+      }
+    }
   }
 
   function _b64DecodeUnicode(str) {

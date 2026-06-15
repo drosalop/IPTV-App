@@ -150,6 +150,7 @@
     <div id="view-player" class="view" tabindex="-1">
       <!-- OSD del reproductor -->
       <div id="player-osd" class="player-osd hidden">
+        <div id="osd-clock" class="osd-clock"></div>
         <div class="osd-left">
           <img id="osd-logo" class="osd-logo" src="" onerror="this.style.display='none'" />
         </div>
@@ -157,6 +158,7 @@
           <div class="osd-channel">
             <span id="osd-num" class="osd-num"></span> 
             <span id="osd-name" class="osd-name"></span>
+            <span id="osd-fav-icon" class="material-symbols-rounded hidden" style="color: var(--yellow); margin-left: 15px; font-size: 32px; vertical-align: middle;">star</span>
             <span id="osd-seek" class="osd-seek hidden"></span>
           </div>
           <div id="osd-now" class="osd-now"></div>
