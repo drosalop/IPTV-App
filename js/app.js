@@ -193,17 +193,33 @@ const App = (() => {
     const url  = _val('m3u-url');
     const epg  = _val('m3u-epg');
     if (!url) { _setStatus('m3u-status', 'Introduce una URL', 'error'); return; }
-    
+
     const list = { id: _uid(), name, type: 'm3u', url, epgUrl: epg };
     _saveList(list);
 
-    showLoading('Descargando lista...');
+    const steps = [
+      { id: 'connect',   label: 'Conectando al servidor' },
+      { id: 'download',  label: 'Descargando lista M3U' },
+      { id: 'parse',     label: 'Procesando canales' },
+    ];
+    SetupProgress.show('Añadiendo lista M3U', name, steps);
     try {
-      const channels = await Playlist.loadM3U(url, pct => showLoading(`Cargando lista… ${pct}%`));
+      SetupProgress.step('connect');
+      SetupProgress.step('download');
+      const channels = await Playlist.loadM3U(url, pct => {
+        SetupProgress.progress(Math.round(pct * 0.8)); // 0-80% durante descarga
+        if (pct > 50) SetupProgress.step('parse');
+      });
       _channels = channels;
-      hideLoading();
+      SetupProgress.progress(100);
+      Storage.setChannelCache(list.id, _channels);
+      await new Promise(r => setTimeout(r, 400)); // breve pausa para ver 100%
+      SetupProgress.hide();
       await _afterLoad(list);
-    } catch(e) { hideLoading(); _setStatus('m3u-status', '✗ ' + e.message, 'error'); }
+    } catch(e) {
+      SetupProgress.hide();
+      _setStatus('m3u-status', '\u2717 ' + e.message, 'error');
+    }
   }
 
   async function _testM3U() {
@@ -222,22 +238,39 @@ const App = (() => {
     const user   = _val('xt-user');
     const pass   = _val('xt-pass');
     if (!server || !user || !pass) { _setStatus('xt-status', 'Rellena todos los campos', 'error'); return; }
-    
+
     const list = { id: _uid(), name, type: 'xtream', server, user, pass };
     _saveList(list);
 
-    showLoading('Conectando...');
+    const steps = [
+      { id: 'auth',      label: 'Verificando credenciales' },
+      { id: 'cats',      label: 'Obteniendo categorías' },
+      { id: 'streams',   label: 'Cargando canales' },
+      { id: 'build',     label: 'Construyendo lista' },
+    ];
+    SetupProgress.show('Conectando a Xtream Codes', server, steps);
     try {
-      const { channels, epgUrl } = await Playlist.loadXtream(server, user, pass, pct => showLoading(`Cargando canales… ${pct}%`));
+      const { channels, epgUrl } = await Playlist.loadXtream(server, user, pass, pct => {
+        SetupProgress.progress(pct);
+        if (pct >= 10 && pct < 30)  SetupProgress.step('auth');
+        if (pct >= 30 && pct < 80)  SetupProgress.step('cats'), SetupProgress.step('streams');
+        if (pct >= 80)               SetupProgress.step('build');
+      });
       _channels = channels;
       if (epgUrl) {
         list.epgUrl = epgUrl;
         const lists = Storage.getLists().map(l => l.id === list.id ? list : l);
         Storage.saveLists(lists);
       }
-      hideLoading();
+      SetupProgress.progress(100);
+      Storage.setChannelCache(list.id, _channels);
+      await new Promise(r => setTimeout(r, 400));
+      SetupProgress.hide();
       await _afterLoad(list);
-    } catch(e) { hideLoading(); _setStatus('xt-status', '✗ ' + e.message, 'error'); }
+    } catch(e) {
+      SetupProgress.hide();
+      _setStatus('xt-status', '\u2717 ' + e.message, 'error');
+    }
   }
 
   async function _testXtream() {
@@ -277,6 +310,7 @@ const App = (() => {
   }
 
   function _deleteList(id) {
+    Storage.clearChannelCache(id);
     Storage.saveLists(Storage.getLists().filter(l => l.id !== id));
     Playlist.clearGroupCache();
     _renderSavedLists();
@@ -286,6 +320,15 @@ const App = (() => {
   async function _loadList(list) {
     _currentList = list;
     Storage.setLastList(list.id);
+
+    // ── Try channel cache first (TTL 6h) ──
+    const cached = Storage.getChannelCache(list.id);
+    if (cached) {
+      _channels = cached;
+      await _afterLoad(list, true /* fromCache */);
+      return;
+    }
+
     showLoading('Cargando canales…');
     try {
       if (list.type === 'xtream') {
@@ -295,6 +338,7 @@ const App = (() => {
       } else {
         _channels = await Playlist.loadM3U(list.url, pct => showLoading(`Cargando… ${pct}%`));
       }
+      Storage.setChannelCache(list.id, _channels);
       await _afterLoad(list);
     } catch(e) {
       hideLoading();
@@ -304,23 +348,20 @@ const App = (() => {
     }
   }
 
-  async function _afterLoad(list) {
+  async function _afterLoad(list, fromCache = false) {
     Playlist.clearGroupCache();
     _groups = Playlist.getGroups(_channels);
     _currentGroup = '__all__';
     _groupIdx     = 0;
 
-    // Load EPG in background — don't block channel list
+    // Load EPG in background — don’t block channel list
     if (list.epgUrl) {
-      showLoading('Cargando guía EPG…');
-      
-      // Extraemos solo los IDs de canales que realmente tenemos cargados
+      if (!fromCache) showLoading('Cargando guía EPG…');
       const validIds = new Set();
       _channels.forEach(c => {
         if (c.epgId) validIds.add(c.epgId);
-        else if (c.name) validIds.add(c.name); // Algunos M3U usan el nombre como ID fallback
+        else if (c.name) validIds.add(c.name);
       });
-
       EPG.load(list.epgUrl, validIds).then(() => hideLoading());
     } else {
       hideLoading();
@@ -328,7 +369,7 @@ const App = (() => {
 
     Search.init(_channels);
     Player.init(_changeChannelRelative);
-    
+
     showView('channels');
     _renderGroups();
     renderChannels();
@@ -338,10 +379,7 @@ const App = (() => {
     const lastChannelId = Storage.getLastChannel();
     if (lastChannelId) {
       const ch = _channels.find(c => c.id === lastChannelId);
-      if (ch) {
-        // Reproducir a pantalla completa directamente
-        _playChannel(ch);
-      }
+      if (ch) _playChannel(ch);
     }
   }
 
@@ -350,13 +388,13 @@ const App = (() => {
     if (_keysChannelsBound) return;
     _keysChannelsBound = true;
 
-    KeyHandler.on('LEFT',  () => { if (_isView('channels')) { _setFocusZone('groups');   return true; } });
-    KeyHandler.on('RIGHT', () => { if (_isView('channels') && _focusZone === 'groups') { _setFocusZone('channels'); return true; } });
-    KeyHandler.on('UP',    () => { if (_isView('channels')) { _moveActive('up');   return true; } });
-    KeyHandler.on('DOWN',  () => { if (_isView('channels')) { _moveActive('down'); return true; } });
+    KeyHandler.on('LEFT',  () => { if (_isView('channels') && !Player.isFullscreen()) { _setFocusZone('groups');   return true; } });
+    KeyHandler.on('RIGHT', () => { if (_isView('channels') && !Player.isFullscreen() && _focusZone === 'groups') { _setFocusZone('channels'); return true; } });
+    KeyHandler.on('UP',    () => { if (_isView('channels') && !Player.isFullscreen()) { _moveActive('up');   return true; } });
+    KeyHandler.on('DOWN',  () => { if (_isView('channels') && !Player.isFullscreen()) { _moveActive('down'); return true; } });
 
     KeyHandler.on('ENTER', () => {
-      if (!_isView('channels')) return;
+      if (!_isView('channels') || Player.isFullscreen()) return;
       const searchBtn = document.getElementById('btn-open-search');
       if (searchBtn && searchBtn.classList.contains('focused')) {
         Search.open();
@@ -371,7 +409,7 @@ const App = (() => {
     });
 
     KeyHandler.on('LONG_OK', () => {
-      if (_isView('channels') && _focusZone === 'channels') {
+      if (_isView('channels') && !Player.isFullscreen() && _focusZone === 'channels') {
         const ch = VirtualList.getCurrentItem();
         if (ch) { Favorites.toggle(ch); renderChannels(); }
       }
@@ -406,11 +444,20 @@ const App = (() => {
     });
   }
 
+  // Actualiza solo clases CSS de grupos sin re-renderizar el DOM
+  function _updateGroupClasses() {
+    const els = document.querySelectorAll('.group-item');
+    els.forEach((el, i) => {
+      el.classList.toggle('focused', i === _groupIdx);
+      el.classList.toggle('active', _groups[i]?.id === _currentGroup);
+    });
+  }
+
   function _selectGroup(group) {
     if (!group) return;
     _currentGroup = group.id;
     _groupIdx     = _groups.findIndex(g => g.id === group.id);
-    _renderGroups();
+    _updateGroupClasses(); // Solo actualiza clases, no re-renderiza DOM
     renderChannels();
     _setFocusZone('channels');
   }
@@ -450,12 +497,15 @@ const App = (() => {
       const els = document.querySelectorAll('.group-item');
       if (!els.length) return;
       els[_groupIdx]?.classList.remove('focused');
-      
-      if (dir === 'up') _groupIdx = Math.max(0, _groupIdx - 1);
+
+      if (dir === 'up')   _groupIdx = Math.max(0, _groupIdx - 1);
       if (dir === 'down') _groupIdx = Math.min(_groups.length - 1, _groupIdx + 1);
-      
-      els[_groupIdx]?.classList.add('focused');
-      els[_groupIdx]?.scrollIntoView({ block: 'nearest' });
+
+      const next = els[_groupIdx];
+      if (next) {
+        next.classList.add('focused');
+        next.scrollIntoView({ block: 'nearest', behavior: 'auto' });
+      }
       
       // Auto-seleccionar categoría con debounce ligero (si el usuario quiere que cargue solo al posarse)
       // clearTimeout(window._groupTimer);
@@ -524,13 +574,13 @@ const App = (() => {
     renderChannels();
   }
 
-  // ── PLAYER ───────────────────────────────────────────
+  // ── PLAYER (overlay sobre channels, sin cortar el video) ─
   function _playChannel(ch) {
     if (!ch) return;
-    Storage.setLastChannel(ch.id); // Guardar para el autoarranque
-    clearTimeout(_previewTimer); // Cancelar preview si pulsó OK rápido
-    showView('player');
-    Player.play(ch, false);
+    Storage.setLastChannel(ch.id);
+    clearTimeout(_previewTimer);
+    // Mantenemos la vista channels activa — el video se superpone encima
+    Player.playFullscreen(ch);
   }
 
   function _changeChannelRelative(dir) {

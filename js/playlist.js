@@ -89,13 +89,13 @@ const Playlist = (() => {
     const base = `${server}/player_api.php?username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}`;
 
     if (onProgress) onProgress(10);
-    const info = await _fetchJson(`${base}`);
+    const info = await _fetchJson(`${base}`, true); // auth: always fresh
     if (!info || info.user_info?.auth === 0) throw new Error('Credenciales incorrectas');
 
     if (onProgress) onProgress(30);
     const [streams, cats] = await Promise.all([
-      _fetchJson(`${base}&action=get_live_streams`),
-      _fetchJson(`${base}&action=get_live_categories`),
+      _fetchJson(`${base}&action=get_live_streams`),    // browser-cached
+      _fetchJson(`${base}&action=get_live_categories`), // browser-cached
     ]);
     if (onProgress) onProgress(80);
 
@@ -118,9 +118,9 @@ const Playlist = (() => {
     return { channels, epgUrl, serverInfo: info.server_info };
   }
 
-  async function _fetchJson(url) {
+  async function _fetchJson(url, noCache = false) {
     try {
-      const res = await fetch(url, { cache: 'no-store' });
+      const res = await fetch(url, { cache: noCache ? 'no-store' : 'force-cache' });
       if (!res.ok) return null;
       return await res.json();
     } catch { return null; }

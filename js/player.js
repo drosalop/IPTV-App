@@ -8,6 +8,7 @@ const Player = (() => {
   let _clockTimer   = null;
   let _onChannelChange = null;
   let _state        = 'IDLE'; // IDLE | BUFFERING | PLAYING | ERROR
+  let _isFullscreen = false;  // true cuando el video cubre toda la pantalla
 
   const OVERLAY_TIMEOUT = 5000;
 
@@ -42,20 +43,12 @@ const Player = (() => {
     _startClock();
   }
 
-  // ── PLAY ─────────────────────────────────────────────
+  // ── PLAY (modo preview dentro de la vista channels) ─
   function play(channel, isPreview = false) {
     if (_current && _current.id === channel.id && (_state === 'PLAYING' || _state === 'BUFFERING')) {
-      // Ya estamos reproduciendo (o cargando) este canal en preview, solo ampliamos la pantalla sin cortes
       if (!isPreview) {
-        const videoLayer = document.getElementById('video-layer');
-        if (videoLayer) {
-          videoLayer.style.left = '0px';
-          videoLayer.style.top = '0px';
-          videoLayer.style.width = '1920px';
-          videoLayer.style.height = '1080px';
-          videoLayer.style.zIndex = '9999';
-        }
-        webapis.avplay.setDisplayRect(0, 0, 1920, 1080);
+        _expandToFullscreen();
+        try { webapis.avplay.setDisplayRect(0, 0, 1920, 1080); } catch(e) {}
         _showOverlay(true);
         _scheduleHideOverlay();
         _updateOverlayInfo();
@@ -67,6 +60,7 @@ const Player = (() => {
     _setState('BUFFERING');
 
     if (!isPreview) {
+      _expandToFullscreen(); // Expande ANTES del timeout para que setDisplayRect use coords correctas
       _showOverlay(true);
       _scheduleHideOverlay();
       _updateOverlayInfo();
@@ -87,6 +81,7 @@ const Player = (() => {
         const videoLayer = document.getElementById('video-layer');
 
         if (isPreview) {
+          _isFullscreen = false;
           const box = document.getElementById('preview-box');
           if (box) {
             const r = box.getBoundingClientRect();
@@ -94,7 +89,7 @@ const Player = (() => {
             const top = Math.round(r.top);
             const w = Math.round(r.width);
             const h = Math.round(r.height);
-            
+
             if (videoLayer) {
               videoLayer.style.left = left + 'px';
               videoLayer.style.top = top + 'px';
@@ -105,13 +100,7 @@ const Player = (() => {
             webapis.avplay.setDisplayRect(left, top, w, h);
           }
         } else {
-          if (videoLayer) {
-            videoLayer.style.left = '0px';
-            videoLayer.style.top = '0px';
-            videoLayer.style.width = '1920px';
-            videoLayer.style.height = '1080px';
-            videoLayer.style.zIndex = '9999';
-          }
+          // Ya expandido antes del timeout; solo confirmamos coords a AVPlay
           webapis.avplay.setDisplayRect(0, 0, 1920, 1080);
         }
         
@@ -153,6 +142,25 @@ const Player = (() => {
       if (s !== 'NONE' && s !== 'IDLE') webapis.avplay.stop();
       if (s !== 'NONE') webapis.avplay.close();
     } catch(e) {}
+  }
+
+  // Expande el video a pantalla completa (overlay sobre la vista actual)
+  function _expandToFullscreen() {
+    _isFullscreen = true;
+    const videoLayer = document.getElementById('video-layer');
+    if (videoLayer) {
+      videoLayer.style.left = '0px';
+      videoLayer.style.top = '0px';
+      videoLayer.style.width = '1920px';
+      videoLayer.style.height = '1080px';
+      videoLayer.style.zIndex = '9999';
+    }
+    try { webapis.avplay.setDisplayRect(0, 0, 1920, 1080); } catch(e) {}
+  }
+
+  // Lanza un canal en pantalla completa SIN cambiar de vista
+  function playFullscreen(channel) {
+    play(channel, false);
   }
 
   // ── EVENTS ───────────────────────────────────────────
@@ -247,10 +255,12 @@ const Player = (() => {
     });
 
     KeyHandler.on('BACK', () => {
-      if (_isActive()) { 
-        App.showView('channels'); 
+      if (_isActive()) {
+        // Volver al modo preview: encoger el video sobre el preview-box
+        _isFullscreen = false;
         setPreviewMode();
-        return true; 
+        _showOverlay(false);
+        return true;
       }
     });
     KeyHandler.on('GREEN', () => {
@@ -292,12 +302,12 @@ const Player = (() => {
     }
   }
 
-  function stop() { _safeStop(); _current = null; }
+  function stop() { _safeStop(); _current = null; _isFullscreen = false; }
   function getCurrent() { return _current; }
   function getState()   { return _state; }
   function _isActive()  {
-    const v = document.getElementById('view-player');
-    return v?.classList.contains('active');
+    // Activo si el video-layer está en pantalla completa
+    return _isFullscreen;
   }
 
   function _setText(id, val) {
@@ -311,5 +321,5 @@ const Player = (() => {
     return `${f(s)} – ${f(e)}`;
   }
 
-  return { init, play, stop, toggleOverlay, getCurrent, getState, setPreviewMode };
+  return { init, play, playFullscreen, stop, toggleOverlay, getCurrent, getState, setPreviewMode, isFullscreen: () => _isFullscreen };
 })();
