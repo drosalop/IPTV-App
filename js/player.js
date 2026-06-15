@@ -16,8 +16,11 @@ const Player = (() => {
 
   const OVERLAY_TIMEOUT = 5000;
 
+  let _initialized = false;
   // ── INIT ─────────────────────────────────────────────
   function init(onChannelChangeCb) {
+    if (_initialized) return;
+    _initialized = true;
     _onChannelChange = onChannelChangeCb;
     _bindKeys();
     _startClock();
@@ -146,8 +149,12 @@ const Player = (() => {
   function toggleOverlay() {
     const el = document.getElementById('player-overlay');
     if (!el) return;
-    const hidden = el.classList.toggle('hidden');
-    if (!hidden) _scheduleHideOverlay();
+    if (el.classList.contains('hidden')) {
+      _showOverlay(true);
+      _scheduleHideOverlay();
+    } else {
+      _showOverlay(false);
+    }
   }
 
   function _updateOverlayInfo() {

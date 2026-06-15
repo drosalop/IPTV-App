@@ -451,7 +451,10 @@ const App = (() => {
     KeyHandler.on('LONG_OK', () => {
       if (_isView('channels') && _focusZone === 'channels') {
         const ch = VirtualList.getCurrentItem();
-        if (ch) { Favorites.toggle(ch); renderChannels(); }
+        if (ch) { 
+          Favorites.toggle(ch.id); 
+          renderChannels(); 
+        }
       }
       return true;
     });

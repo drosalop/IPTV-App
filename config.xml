@@ -10,6 +10,7 @@
                      required_version="4.0"/>
 
   <content src="index.html"/>
+  <icon src="img/logo.png"/>
   <name>IPTV Player</name>
   <description>IPTV Player with EPG guide for Samsung TV</description>
 
