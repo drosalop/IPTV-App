@@ -5,14 +5,13 @@
         version="1.0.0"
         viewmodes="fullscreen">
 
-  <tizen:application id="IPTVApp.Main"
-                     package="IPTVApp"
+  <tizen:application id="IPTVAppTV1.Main"
+                     package="IPTVAppTV1"
                      required_version="4.0"/>
 
   <content src="index.html"/>
   <name>IPTV Player</name>
   <description>IPTV Player with EPG guide for Samsung TV</description>
-  <icon src="assets/icon.png"/>
 
   <tizen:setting hwkey-event="enable"/>
   <tizen:setting screen-orientation="landscape"/>

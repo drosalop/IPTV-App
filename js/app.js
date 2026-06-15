@@ -11,6 +11,10 @@ const App = (() => {
   let _groupIdx        = 0;
   let _toastTimer      = null;
   let _keysChannelsBound = false;
+  let _keysSetupBound    = false;
+  let _setupZone         = 'tabs'; // 'tabs' | 'content'
+  let _setupTabIdx       = 0;
+  let _setupContentIdx   = 0;
 
   // ── INIT ─────────────────────────────────────────────
   function init() {
@@ -36,31 +40,109 @@ const App = (() => {
   }
 
   // ── SETUP ─────────────────────────────────────────────
+  function _getSetupTabs() { return Array.from(document.querySelectorAll('#view-setup .tab-btn')); }
+  function _getSetupContent() { return Array.from(document.querySelectorAll('#view-setup .tab-content.active .tv-input, #view-setup .tab-content.active .btn-primary, #view-setup .tab-content.active .btn-secondary, #view-setup .tab-content.active .saved-item')); }
+
+  function _updateSetupFocus() {
+    document.querySelectorAll('#view-setup .focused').forEach(e => e.classList.remove('focused'));
+    if (_setupZone === 'tabs') {
+      const t = _getSetupTabs();
+      if (t[_setupTabIdx]) {
+        t[_setupTabIdx].classList.add('focused');
+        t[_setupTabIdx].scrollIntoView({ block: 'nearest' });
+      }
+    } else {
+      const c = _getSetupContent();
+      if (c[_setupContentIdx]) {
+        c[_setupContentIdx].classList.add('focused');
+        c[_setupContentIdx].scrollIntoView({ block: 'nearest' });
+      } else {
+        _setupZone = 'tabs';
+        _updateSetupFocus();
+      }
+    }
+  }
+
   function _initSetupView() {
     _renderSavedLists();
 
-    document.querySelectorAll('.tab-btn').forEach(btn =>
-      btn.addEventListener('click', () => _switchTab(btn.dataset.tab)));
+    document.querySelectorAll('.tab-btn').forEach((btn, idx) =>
+      btn.addEventListener('click', () => {
+        _setupZone = 'tabs';
+        _setupTabIdx = idx;
+        _switchTab(btn.dataset.tab);
+        _updateSetupFocus();
+      })
+    );
 
     _on('btn-add-m3u',     () => _addM3U());
     _on('btn-test-m3u',    () => _testM3U());
     _on('btn-add-xtream',  () => _addXtream());
     _on('btn-test-xtream', () => _testXtream());
 
+    _setupZone = 'tabs';
+    _updateSetupFocus();
+
+    if (_keysSetupBound) return;
+    _keysSetupBound = true;
+
     // D-pad navigation for setup
-    const focusable = () => Array.from(document.querySelectorAll(
-      '#view-setup .tab-btn, #view-setup .tv-input, #view-setup .btn-primary, #view-setup .btn-secondary, #view-setup .saved-item'));
-    let idx = 0;
-    const move = (d) => {
-      const els = focusable();
-      els[idx]?.classList.remove('focused');
-      idx = Math.max(0, Math.min(els.length - 1, idx + (d === 'down' ? 1 : -1)));
-      els[idx]?.classList.add('focused');
-      els[idx]?.scrollIntoView({ block: 'nearest' });
-    };
-    KeyHandler.on('DOWN',  () => { if (_isView('setup')) { move('down');     return true; } });
-    KeyHandler.on('UP',    () => { if (_isView('setup')) { move('up');       return true; } });
-    KeyHandler.on('ENTER', () => { if (_isView('setup')) { focusable()[idx]?.click(); return true; } });
+    KeyHandler.on('RIGHT', () => {
+      if (_isView('setup') && _setupZone === 'tabs') {
+        _setupTabIdx = Math.min(_getSetupTabs().length - 1, _setupTabIdx + 1);
+        _updateSetupFocus();
+        return true;
+      }
+    });
+
+    KeyHandler.on('LEFT', () => {
+      if (_isView('setup') && _setupZone === 'tabs') {
+        _setupTabIdx = Math.max(0, _setupTabIdx - 1);
+        _updateSetupFocus();
+        return true;
+      }
+    });
+
+    KeyHandler.on('DOWN', () => {
+      if (!_isView('setup')) return;
+      if (_setupZone === 'tabs') {
+        const t = _getSetupTabs();
+        if (t[_setupTabIdx] && !t[_setupTabIdx].classList.contains('active')) t[_setupTabIdx].click();
+        _setupZone = 'content';
+        _setupContentIdx = 0;
+      } else {
+        _setupContentIdx = Math.min(_getSetupContent().length - 1, _setupContentIdx + 1);
+      }
+      _updateSetupFocus();
+      return true;
+    });
+
+    KeyHandler.on('UP', () => {
+      if (!_isView('setup')) return;
+      if (_setupZone === 'content') {
+        if (_setupContentIdx === 0) _setupZone = 'tabs';
+        else _setupContentIdx--;
+        _updateSetupFocus();
+      }
+      return true;
+    });
+
+    KeyHandler.on('ENTER', () => {
+      if (!_isView('setup')) return;
+      if (_setupZone === 'tabs') {
+        _getSetupTabs()[_setupTabIdx]?.click();
+        _setupZone = 'content';
+        _setupContentIdx = 0;
+        _updateSetupFocus();
+      } else {
+        const el = _getSetupContent()[_setupContentIdx];
+        if (el) {
+          if (el.tagName === 'INPUT') el.focus();
+          else el.click();
+        }
+      }
+      return true;
+    });
   }
 
   function _switchTab(tab) {
