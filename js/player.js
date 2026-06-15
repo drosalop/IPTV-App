@@ -16,12 +16,6 @@ const Player = (() => {
 
   const OVERLAY_TIMEOUT = 5000;
 
-  // ── Dimensiones del viewport CSS ──
-  // En Tizen, si el meta viewport y el body están en 1920x1080, setDisplayRect DEBE recibir 1920x1080
-  // independientemente de la resolución física (720p, 1080p, 4K), ya que Tizen escala automáticamente.
-  const _SW = 1920;
-  const _SH = 1080;
-
   // ── INIT ─────────────────────────────────────────────
   function init(onChannelChangeCb) {
     _onChannelChange = onChannelChangeCb;
@@ -30,11 +24,8 @@ const Player = (() => {
   }
 
   // ── PLAY ─────────────────────────────────────────────
-  // isPreview parameter is no longer used, kept for backward compatibility but ignored
-  function play(channel, isPreview = false) {
-    // Si ya reproducimos este canal en el estado correcto, solo ajustamos display
+  function play(channel) {
     if (_current && _current.id === channel.id && (_state === 'PLAYING' || _state === 'BUFFERING')) {
-      _applyFullscreenRect();
       _showOverlay(true);
       _scheduleHideOverlay();
       _updateOverlayInfo();
@@ -48,7 +39,6 @@ const Player = (() => {
     _scheduleHideOverlay();
     _updateOverlayInfo();
 
-    // Retardo mínimo para asegurar que el DOM/view ya está visible
     setTimeout(() => {
       _safeStop();
       try {
@@ -57,17 +47,21 @@ const Player = (() => {
 
         webapis.avplay.open(playUrl);
 
-        // ── Posición del display rect ──
-        _applyFullscreenRect();
+        // ── CONFIGURACIÓN CRÍTICA PARA PANTALLA COMPLETA ──
+        // PLAYER_DISPLAY_MODE_FULL_SCREEN ignora el aspect ratio y fuerza que llene el rectángulo
+        try { webapis.avplay.setDisplayMethod('PLAYER_DISPLAY_MODE_FULL_SCREEN'); } catch(e) {}
+        
+        // El rectángulo debe coincidir exactamente con la resolución CSS de la App (1920x1080)
+        try { webapis.avplay.setDisplayRect(0, 0, 1920, 1080); } catch(e) {}
 
-        // Ajuste de bitrate adaptativo según calidad del canal
         try {
           const name = (channel.name || '').toUpperCase();
           const is8K = name.includes('8K');
           const is4K = name.includes('4K') || name.includes('UHD') || name.includes('2160');
           const isHD = name.includes('FHD') || name.includes('HD') || name.includes('1080');
           const maxBr = is8K ? 80000000 : is4K ? 40000000 : isHD ? 20000000 : 10000000;
-          const bufMs = is8K ? _baseBuffer * 2.5 : is4K ? _baseBuffer * 2 : isHD ? Math.round(_baseBuffer * 1.3) : _baseBuffer;
+          // Buffer adaptado: 2-3 segundos para evitar cortes
+          const bufMs = is8K ? 5000 : is4K ? 4000 : isHD ? 3000 : 3000;
 
           webapis.avplay.setStreamingProperty('ADAPTIVE_INFO',
             `STARTBITRATE=HIGHEST|MAXBITRATE=${maxBr}|BUFFERLENGTH=${Math.round(bufMs / 1000)}`);
@@ -79,19 +73,17 @@ const Player = (() => {
           oncurrentplaytime:   ()  => _updateProgress(),
           onevent:             (type) => {
             if (type === 'PLAYER_MSG_END_OF_STREAM')
-              setTimeout(() => { if (_current) play(_current, isPreview); }, 1000);
+              setTimeout(() => { if (_current) play(_current); }, 1000);
           },
           onerror:           (err) => _onError(err),
           ondrmevent:        () => {},
           onstreamcompleted: () => {
-            setTimeout(() => { if (_current) play(_current, isPreview); }, 1000);
+            setTimeout(() => { if (_current) play(_current); }, 1000);
           },
         });
 
-        // prepareAsync: aplica de nuevo el rect justo antes de play() para máxima fiabilidad
         webapis.avplay.prepareAsync(
           () => {
-            _applyFullscreenRect();
             try { webapis.avplay.play(); } catch(e) { _onError(e); }
           },
           (err) => _onError(err)
@@ -102,15 +94,6 @@ const Player = (() => {
         _onError('OPEN_FAILED');
       }
     }, 50);
-  }
-
-  // ── DISPLAY RECT HELPERS ──────────────────────────────
-  function _applyFullscreenRect() {
-    const vl = document.getElementById('video-layer');
-    if (vl) {
-      vl.style.cssText = `position:absolute;left:0;top:0;width:100%;height:100%;z-index:9999;pointer-events:none;`;
-    }
-    try { webapis.avplay.setDisplayRect(0, 0, _SW, _SH); } catch(e) {}
   }
 
   // ── SAFE STOP ────────────────────────────────────────

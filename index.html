@@ -15,11 +15,10 @@
 <body>
   <div id="app">
 
-    <!-- CAPA GLOBAL PARA VIDEO — dimensiones controladas 100% por player.js -->
-    <div id="video-layer"
-      style="position:absolute;left:0;top:0;width:0;height:0;z-index:50;pointer-events:none;overflow:hidden;">
-      <object id="av-player" type="application/avplayer"></object>
-    </div>
+    <!-- CAPA GLOBAL PARA VIDEO (Siempre 1920x1080, Tizen AVPlay escala la imagen) -->
+  <div id="video-layer" style="position:absolute; left:0; top:0; width:1920px; height:1080px; z-index:50; pointer-events:none;">
+    <object id="av-player" type="application/avplayer" style="width:100%; height:100%; display:block;"></object>
+  </div>
 
     <!-- ══ SETUP ══ -->
     <div id="view-setup" class="view active">
