@@ -482,7 +482,13 @@ const App = (() => {
         const ch = VirtualList.getCurrentItem();
         if (ch) { 
           Favorites.toggle(ch.id); 
-          renderChannels(); 
+          _updateGroupCounts();
+          
+          if (_currentGroup === '__favs__') {
+            renderChannels(); // Requiere recargar la lista porque cambia el número de elementos
+          } else {
+            VirtualList.refreshVisible(); // Solo repinta el corazón al instante
+          }
         }
       }
       return true;

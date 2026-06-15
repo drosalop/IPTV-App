@@ -112,6 +112,17 @@ const VirtualList = (() => {
     }
   }
 
+  function refreshVisible() {
+    if (!_container) return;
+    for (const key in _domCache) {
+      const i = parseInt(key);
+      const oldEl = _domCache[key];
+      const newEl = _createCard(i);
+      _container.replaceChild(newEl, oldEl);
+      _domCache[i] = newEl;
+    }
+  }
+
   function _createCard(i) {
     const ch  = _items[i];
     const col = i % COLS;
@@ -175,5 +186,5 @@ const VirtualList = (() => {
     return s ? String(s).replace(/</g, '&lt;').replace(/>/g, '&gt;') : '';
   }
 
-  return { init, update, setFocused, getFocused, move, getCurrentItem, getItem };
+  return { init, update, setFocused, getFocused, move, getItem, getCurrentItem, refreshVisible };
 })();
