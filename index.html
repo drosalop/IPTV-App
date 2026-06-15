@@ -25,8 +25,8 @@
       <div class="setup-bg"></div>
       <div class="setup-container">
         <div class="setup-logo">
-          <span class="logo-icon">▶</span>
-          <h1 class="logo-text">IPTV<span class="accent">Player</span></h1>
+          <img src="img/logo.png" alt="IPTV PRO Logo" class="logo-img" />
+          <h1 class="app-title">IPTV<span class="title-pro">PRO</span></h1>
         </div>
         <div class="setup-card">
           <div class="tab-bar">
@@ -134,7 +134,7 @@
     <div id="view-channels" class="view">
       <div class="channels-layout">
         <aside class="sidebar">
-          <div class="sidebar-header"><span class="sidebar-logo">▶ IPTV</span></div>
+          <div class="sidebar-header"><img src="img/logo.png" alt="IPTV Logo" class="sidebar-logo-img" style="height:40px; border-radius: 8px;" /></div>
           <ul class="group-list" id="group-list"></ul>
           <div class="sidebar-footer">
             <button class="sidebar-btn" id="btn-open-setup">⚙️</button>
@@ -171,10 +171,15 @@
               <img id="overlay-logo" src="" alt="" class="overlay-logo" />
               <div class="overlay-channel-info">
                 <span id="overlay-ch-num" class="ch-num"></span>
-                <span id="overlay-ch-name" class="ch-name"></span>
-                <span id="overlay-ch-fav" class="ch-fav" style="color:var(--accent2); font-size:24px; vertical-align: middle; margin-left:8px;"></span>
+                <div style="display:flex; align-items:center;">
+                  <span id="overlay-ch-name" class="ch-name"></span>
+                  <span id="overlay-ch-fav" class="ch-fav" style="color:var(--accent2); font-size:24px; margin-left:8px;"></span>
+                </div>
               </div>
             </div>
+            
+            <div class="overlay-divider"></div>
+
             <div class="overlay-program">
               <div class="program-current">
                 <span class="prog-label">AHORA</span>
@@ -182,11 +187,14 @@
                 <span id="prog-now-time" class="prog-time"></span>
               </div>
               <div class="program-next">
-                <span class="prog-label" style="color:var(--text-dim)">DESPUÉS</span>
-                <span id="prog-next-title" class="prog-title" style="color:var(--text-sec)"></span>
+                <span class="prog-label">DESPUÉS</span>
+                <span id="prog-next-title" class="prog-title"></span>
                 <span id="prog-next-time" class="prog-time"></span>
               </div>
             </div>
+
+            <div class="overlay-divider"></div>
+
             <div class="overlay-time" id="overlay-time"></div>
           </div>
           <div class="progress-bar">

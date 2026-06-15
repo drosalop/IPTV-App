@@ -155,7 +155,7 @@ const Player = (() => {
     const safe = s => s ? String(s) : '';
     _setText('overlay-ch-name', safe(_current.name));
     _setText('overlay-ch-num',  '#' + ((_current.id || 0) + 1));
-    _setText('overlay-ch-fav',  Favorites.has(_current.id) ? '♥' : '');
+    _setText('overlay-ch-fav',  Favorites.isFav(_current.id) ? '♥' : '');
     const logoEl = document.getElementById('overlay-logo');
     if (logoEl) logoEl.src = _current.logo || '';
     const now  = EPG.getNow(_current.epgId);
