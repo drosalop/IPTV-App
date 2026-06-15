@@ -800,5 +800,5 @@ const App = (() => {
   function _fmt(d) { return d?.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) || ''; }
 
   window.addEventListener('load', init);
-  return { showView, showToast, showLoading, hideLoading, renderChannels };
+  return { showView, showToast, showLoading, hideLoading, renderChannels, refreshUI };
 })();
