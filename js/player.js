@@ -53,6 +53,7 @@ const Player = (() => {
           videoLayer.style.top = '0px';
           videoLayer.style.width = '1920px';
           videoLayer.style.height = '1080px';
+          videoLayer.style.zIndex = '9999';
         }
         webapis.avplay.setDisplayRect(0, 0, 1920, 1080);
         _showOverlay(true);
@@ -99,6 +100,7 @@ const Player = (() => {
               videoLayer.style.top = top + 'px';
               videoLayer.style.width = w + 'px';
               videoLayer.style.height = h + 'px';
+              videoLayer.style.zIndex = '50';
             }
             webapis.avplay.setDisplayRect(left, top, w, h);
           }
@@ -108,6 +110,7 @@ const Player = (() => {
             videoLayer.style.top = '0px';
             videoLayer.style.width = '1920px';
             videoLayer.style.height = '1080px';
+            videoLayer.style.zIndex = '9999';
           }
           webapis.avplay.setDisplayRect(0, 0, 1920, 1080);
         }
@@ -280,6 +283,7 @@ const Player = (() => {
         videoLayer.style.top = top + 'px';
         videoLayer.style.width = w + 'px';
         videoLayer.style.height = h + 'px';
+        videoLayer.style.zIndex = '50';
       }
       
       try {
