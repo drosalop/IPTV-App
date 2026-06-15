@@ -60,14 +60,17 @@ const App = (() => {
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     const el = document.getElementById('view-' + name);
     if (el) el.classList.add('active');
-    if (name === 'channels') _initChannelsKeys();
+    if (name === 'channels') {
+      _initChannelsKeys();
+      _updateGroupCounts();
+    }
     if (name === 'epg')      _renderEPGView();
     if (name === 'setup')    _initSetupView();
   }
 
   // ── SETUP ─────────────────────────────────────────────
   function _getSetupTabs() { return Array.from(document.querySelectorAll('#view-setup .tab-btn')); }
-  function _getSetupContent() { return Array.from(document.querySelectorAll('#view-setup .tab-content.active .tv-input, #view-setup .tab-content.active .btn-primary, #view-setup .tab-content.active .btn-secondary, #view-setup .tab-content.active .saved-item')); }
+  function _getSetupContent() { return Array.from(document.querySelectorAll('#view-setup .tab-content.active .tv-input, #view-setup .tab-content.active .btn-primary, #view-setup .tab-content.active .btn-secondary, #view-setup .tab-content.active .saved-item, #view-setup .tab-content.active .saved-item-edit, #view-setup .tab-content.active .saved-item-del')); }
 
   function _updateSetupFocus() {
     if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) {
@@ -365,23 +368,49 @@ const App = (() => {
     const cached = Storage.getChannelCache(list.id);
     if (cached) {
       _channels = cached;
+      
+      const steps = [{ id: 'cache', label: 'Cargando de caché local' }];
+      SetupProgress.show('Cargando Lista', list.name, steps);
+      SetupProgress.step('cache');
+      SetupProgress.progress(100);
+      await new Promise(r => setTimeout(r, 400));
+      SetupProgress.hide();
+
       await _afterLoad(list, true /* fromCache */);
       return;
     }
 
-    showLoading('Cargando canales…');
+    const steps = [
+      { id: 'connect',   label: 'Conectando al servidor' },
+      { id: 'download',  label: 'Descargando lista' },
+      { id: 'parse',     label: 'Procesando canales' },
+    ];
+    SetupProgress.show('Cargando Lista', list.name, steps);
+
     try {
+      SetupProgress.step('connect');
       if (list.type === 'xtream') {
-        const r = await Playlist.loadXtream(list.server, list.user, list.pass, pct => showLoading(`Cargando… ${pct}%`));
+        SetupProgress.step('download');
+        const r = await Playlist.loadXtream(list.server, list.user, list.pass, pct => {
+            SetupProgress.progress(Math.round(pct * 0.8));
+            if (pct > 50) SetupProgress.step('parse');
+        });
         _channels = r.channels;
         if (!list.epgUrl && r.epgUrl) list.epgUrl = r.epgUrl;
       } else {
-        _channels = await Playlist.loadM3U(list.url, pct => showLoading(`Cargando… ${pct}%`));
+        SetupProgress.step('download');
+        _channels = await Playlist.loadM3U(list.url, pct => {
+            SetupProgress.progress(Math.round(pct * 0.8));
+            if (pct > 50) SetupProgress.step('parse');
+        });
       }
+      SetupProgress.progress(100);
       Storage.setChannelCache(list.id, _channels);
+      await new Promise(r => setTimeout(r, 400));
+      SetupProgress.hide();
       await _afterLoad(list);
     } catch(e) {
-      hideLoading();
+      SetupProgress.hide();
       showToast('Error cargando lista', 'error');
       showView('setup');
       _initSetupView();
@@ -428,10 +457,10 @@ const App = (() => {
     if (_keysChannelsBound) return;
     _keysChannelsBound = true;
 
-    KeyHandler.on('LEFT',  () => { if (_isView('channels')) { _setFocusZone('groups');   return true; } });
-    KeyHandler.on('RIGHT', () => { if (_isView('channels') && _focusZone === 'groups') { _setFocusZone('channels'); return true; } });
-    KeyHandler.on('UP',    () => { if (_isView('channels')) { _moveActive('up');   return true; } });
-    KeyHandler.on('DOWN',  () => { if (_isView('channels')) { _moveActive('down'); return true; } });
+    KeyHandler.on('LEFT',  () => { if (_isView('channels')) { _moveActive('left');  return true; } });
+    KeyHandler.on('RIGHT', () => { if (_isView('channels')) { _moveActive('right'); return true; } });
+    KeyHandler.on('UP',    () => { if (_isView('channels')) { _moveActive('up');    return true; } });
+    KeyHandler.on('DOWN',  () => { if (_isView('channels')) { _moveActive('down');  return true; } });
 
     KeyHandler.on('ENTER', () => {
       if (!_isView('channels')) return;
@@ -496,6 +525,21 @@ const App = (() => {
     });
   }
 
+  function _updateGroupCounts() {
+    const els = document.querySelectorAll('.group-item');
+    if (!els.length || !_groups.length) return;
+    els.forEach((el, i) => {
+      const g = _groups[i];
+      if (!g) return;
+      const countEl = el.querySelector('.group-count');
+      if (!countEl) return;
+      const cnt = g.id === '__all__'  ? _channels.length :
+                  g.id === '__favs__' ? Favorites.getIds().length :
+                  _channels.filter(c => c.group === g.id).length;
+      countEl.textContent = cnt;
+    });
+  }
+
   function _selectGroup(group) {
     if (!group) return;
     _currentGroup = group.id;
@@ -530,10 +574,16 @@ const App = (() => {
       getFavBadge:  id => favIds.has(id),
       getEpgNow:    epgId => EPG.getNow(epgId),
     });
+
+    _updateGroupCounts();
   }
 
   function _moveActive(dir) {
     if (_focusZone === 'groups') {
+      if (dir === 'right') {
+        _setFocusZone('channels');
+        return;
+      }
       const els = document.querySelectorAll('.group-item');
       if (!els.length) return;
       els[_groupIdx]?.classList.remove('focused');
@@ -546,30 +596,17 @@ const App = (() => {
         next.classList.add('focused');
         next.scrollIntoView({ block: 'nearest', behavior: 'auto' });
       }
-      
-      // Auto-seleccionar categoría con debounce ligero (si el usuario quiere que cargue solo al posarse)
-      // clearTimeout(window._groupTimer);
-      // window._groupTimer = setTimeout(() => { _selectGroup(_groups[_groupIdx]); }, 300);
     } else {
-      const searchBtn = document.getElementById('btn-open-search');
-      if (searchBtn && searchBtn.classList.contains('focused')) {
-        if (dir === 'down') {
-          VirtualList.setFocused(0);
-          KeyHandler.setFocus(document.querySelector('.channel-card.focused'));
-        } else if (dir === 'left') {
-          _setFocusZone('groups');
-        }
+      const curIdx = VirtualList.getFocused();
+
+      // Si pulsamos izquierda estando en la primera columna, volver al panel de grupos
+      if (dir === 'left' && curIdx % 3 === 0) {
+        _setFocusZone('groups');
         return;
       }
 
-      const curIdx = VirtualList.getFocused();
-      if (dir === 'up' && curIdx < 3) {
-        // Mover el foco al botón de buscar
-        KeyHandler.setFocus(searchBtn);
-      } else {
-        VirtualList.move(dir);
-        KeyHandler.setFocus(document.querySelector('.channel-card.focused'));
-      }
+      VirtualList.move(dir);
+      KeyHandler.setFocus(document.querySelector('.channel-card.focused'));
     }
   }
 

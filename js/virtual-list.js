@@ -57,10 +57,11 @@ const VirtualList = (() => {
 
   function move(dir) {
     let next = _focusedIdx;
+    const col = _focusedIdx % COLS;
     if (dir === 'down')  next = Math.min(_items.length - 1, _focusedIdx + COLS);
     if (dir === 'up')    next = Math.max(0, _focusedIdx - COLS);
-    if (dir === 'right') next = Math.min(_items.length - 1, _focusedIdx + 1);
-    if (dir === 'left')  next = Math.max(0, _focusedIdx - 1);
+    if (dir === 'right' && col < COLS - 1) next = Math.min(_items.length - 1, _focusedIdx + 1);
+    if (dir === 'left' && col > 0)  next = Math.max(0, _focusedIdx - 1);
     if (next !== _focusedIdx) setFocused(next);
     if (_items[_focusedIdx] && _onHover) _onHover(_items[_focusedIdx]);
   }

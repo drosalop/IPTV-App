@@ -201,6 +201,15 @@ const Player = (() => {
     KeyHandler.on('UP',   () => { if (_isActive()) { _showOverlay(true); _scheduleHideOverlay(); return true; } });
     KeyHandler.on('DOWN', () => { if (_isActive()) { _showOverlay(true); _scheduleHideOverlay(); return true; } });
     KeyHandler.on('ENTER',() => { if (_isActive()) { toggleOverlay(); return true; } });
+    KeyHandler.on('LONG_OK',()=> { 
+      if (_isActive() && _current) { 
+        Favorites.toggle(_current.id); 
+        _updateOverlayInfo();
+        _showOverlay(true);
+        _scheduleHideOverlay();
+        return true; 
+      } 
+    });
 
     KeyHandler.on('BACK', () => {
       if (_isActive()) {
