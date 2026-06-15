@@ -188,14 +188,18 @@ const App = (() => {
     document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === 'tab-content-' + tab));
   }
 
+  let _editingListId = null;
+
   async function _addM3U() {
     const name = _val('m3u-name') || 'Lista M3U';
     const url  = _val('m3u-url');
     const epg  = _val('m3u-epg');
     if (!url) { _setStatus('m3u-status', 'Introduce una URL', 'error'); return; }
 
-    const list = { id: _uid(), name, type: 'm3u', url, epgUrl: epg };
+    const list = { id: _editingListId || _uid(), name, type: 'm3u', url, epgUrl: epg };
     _saveList(list);
+    _editingListId = null;
+    document.getElementById('btn-add-m3u').textContent = 'Añadir y Cargar';
 
     const steps = [
       { id: 'connect',   label: 'Conectando al servidor' },
@@ -239,8 +243,10 @@ const App = (() => {
     const pass   = _val('xt-pass');
     if (!server || !user || !pass) { _setStatus('xt-status', 'Rellena todos los campos', 'error'); return; }
 
-    const list = { id: _uid(), name, type: 'xtream', server, user, pass };
+    const list = { id: _editingListId || _uid(), name, type: 'xtream', server, user, pass };
     _saveList(list);
+    _editingListId = null;
+    document.getElementById('btn-add-xtream').textContent = 'Añadir y Cargar';
 
     const steps = [
       { id: 'auth',      label: 'Verificando credenciales' },
@@ -302,11 +308,37 @@ const App = (() => {
           <div class="saved-item-name">${list.name}</div>
           <div class="saved-item-type">${list.type === 'xtream' ? 'Xtream · ' + list.server : 'M3U8'}</div>
         </div>
-        <button class="saved-item-del" data-id="${list.id}">🗑</button>`;
+        <div style="display:flex; gap:8px;">
+          <button class="saved-item-edit" data-id="${list.id}">✏️</button>
+          <button class="saved-item-del" data-id="${list.id}">🗑</button>
+        </div>`;
+      
+      item.querySelector('.saved-item-edit').addEventListener('click', e => { e.stopPropagation(); _editList(list); });
       item.querySelector('.saved-item-del').addEventListener('click', e => { e.stopPropagation(); _deleteList(list.id); });
       item.addEventListener('click', () => _loadList(list));
       el.appendChild(item);
     });
+  }
+
+  function _editList(list) {
+    _editingListId = list.id;
+    if (list.type === 'm3u') {
+      document.getElementById('m3u-name').value = list.name || '';
+      document.getElementById('m3u-url').value = list.url || '';
+      document.getElementById('m3u-epg').value = list.epgUrl || '';
+      document.getElementById('btn-add-m3u').textContent = 'Guardar y Cargar';
+      _switchTab('m3u');
+    } else if (list.type === 'xtream') {
+      document.getElementById('xt-name').value = list.name || '';
+      document.getElementById('xt-server').value = list.server || '';
+      document.getElementById('xt-user').value = list.user || '';
+      document.getElementById('xt-pass').value = list.pass || '';
+      document.getElementById('btn-add-xtream').textContent = 'Guardar y Cargar';
+      _switchTab('xtream');
+    }
+    _setupZone = 'content';
+    _setupContentIdx = 0;
+    _updateSetupFocus();
   }
 
   function _deleteList(id) {
@@ -544,7 +576,7 @@ const App = (() => {
     const ch = VirtualList.getCurrentItem();
     if (!ch) return;
     const added = Favorites.toggle(ch.id);
-    showToast(added ? '★ Añadido a favoritos' : '☆ Eliminado de favoritos', 'info');
+    showToast(added ? '♥ Añadido a favoritos' : '♡ Eliminado de favoritos', 'info');
     renderChannels();
   }
 
@@ -603,14 +635,16 @@ const App = (() => {
   function _saveList(list) {
     const lists = Storage.getLists();
     
-    // Evitar guardar duplicados exactos
-    if (list.type === 'm3u') {
-      if (lists.find(l => l.url === list.url)) return;
+    const idx = lists.findIndex(l => l.id === list.id);
+    if (idx !== -1) {
+      lists[idx] = list; // Update existing
     } else {
-      if (lists.find(l => l.server === list.server && l.user === list.user)) return;
+      // Evitar guardar duplicados exactos solo si es nueva
+      if (list.type === 'm3u' && lists.find(l => l.url === list.url)) return;
+      if (list.type === 'xtream' && lists.find(l => l.server === list.server && l.user === list.user)) return;
+      lists.push(list);
     }
     
-    lists.push(list);
     Storage.saveLists(lists);
   }
 

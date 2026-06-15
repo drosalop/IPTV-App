@@ -129,7 +129,7 @@ const VirtualList = (() => {
 
     // Use innerHTML once — fast
     el.innerHTML =
-      (isFav ? '<span class="fav-badge">★</span>' : '') +
+      (isFav ? '<span class="fav-badge">♥</span>' : '') +
       (ch.logo
         ? `<img class="channel-logo" src="${_safeStr(ch.logo)}" loading="lazy" decoding="async" onerror="this.style.display='none'">`
         : '') +

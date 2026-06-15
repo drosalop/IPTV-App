@@ -48,6 +48,12 @@ const Player = (() => {
         webapis.avplay.open(playUrl);
 
         // ── CONFIGURACIÓN CRÍTICA PARA PANTALLA COMPLETA ──
+        const vl = document.getElementById('video-layer');
+        if (vl) {
+          vl.style.width = '1920px';
+          vl.style.height = '1080px';
+        }
+
         // PLAYER_DISPLAY_MODE_FULL_SCREEN ignora el aspect ratio y fuerza que llene el rectángulo
         try { webapis.avplay.setDisplayMethod('PLAYER_DISPLAY_MODE_FULL_SCREEN'); } catch(e) {}
         
@@ -99,6 +105,11 @@ const Player = (() => {
   // ── SAFE STOP ────────────────────────────────────────
   function _safeStop() {
     try {
+      const vl = document.getElementById('video-layer');
+      if (vl) {
+        vl.style.width = '0px';
+        vl.style.height = '0px';
+      }
       const s = webapis.avplay.getState();
       if (s !== 'NONE' && s !== 'IDLE') webapis.avplay.stop();
       if (s !== 'NONE') webapis.avplay.close();
