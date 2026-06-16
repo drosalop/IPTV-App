@@ -3,10 +3,12 @@
  */
 const ViewSetup = (() => {
   let _setupEventsBound = false;
-  let _setupZone = 'tabs'; // 'tabs' | 'content'
+  let _setupZone = 'tabs'; // 'tabs' | 'content' | 'exit'
   let _setupTabIdx = 0;
   let _setupContentIdx = 0;
   let _editingListId = null;
+  let _prevSetupZone = 'tabs';
+  let _exitFocusIdx = 0;
 
   function _uid() { return Math.random().toString(36).substring(2, 9); }
   function _val(id) { const el = document.getElementById(id); return el ? el.value.trim() : ''; }
@@ -41,6 +43,29 @@ const ViewSetup = (() => {
         _updateSetupFocus();
       }
     }
+  }
+
+  function _showExitPopup() {
+    _prevSetupZone = _setupZone;
+    _setupZone = 'exit';
+    _exitFocusIdx = 0;
+    const el = document.getElementById('exit-popup');
+    if (el) el.classList.remove('hidden');
+    _updateExitFocus();
+  }
+
+  function _hideExitPopup() {
+    _setupZone = _prevSetupZone;
+    const el = document.getElementById('exit-popup');
+    if (el) el.classList.add('hidden');
+    _updateSetupFocus();
+  }
+
+  function _updateExitFocus() {
+    const cancel = document.getElementById('btn-exit-cancel');
+    const confirm = document.getElementById('btn-exit-confirm');
+    if (cancel) cancel.classList.toggle('focused', _exitFocusIdx === 0);
+    if (confirm) confirm.classList.toggle('focused', _exitFocusIdx === 1);
   }
 
   function _switchTab(tab) {
@@ -192,6 +217,11 @@ const ViewSetup = (() => {
     // D-pad navigation for setup
     KeyHandler.on('RIGHT', () => {
       if (typeof Router === 'undefined' || !Router.isView('setup')) return;
+      if (_setupZone === 'exit') {
+        _exitFocusIdx = 1;
+        _updateExitFocus();
+        return true;
+      }
       if (_setupZone === 'tabs') {
         _setupTabIdx = Math.min(_getSetupTabs().length - 1, _setupTabIdx + 1);
         _getSetupTabs()[_setupTabIdx]?.click();
@@ -212,6 +242,11 @@ const ViewSetup = (() => {
 
     KeyHandler.on('LEFT', () => {
       if (typeof Router === 'undefined' || !Router.isView('setup')) return;
+      if (_setupZone === 'exit') {
+        _exitFocusIdx = 0;
+        _updateExitFocus();
+        return true;
+      }
       if (_setupZone === 'tabs') {
         _setupTabIdx = Math.max(0, _setupTabIdx - 1);
         _getSetupTabs()[_setupTabIdx]?.click();
@@ -232,6 +267,7 @@ const ViewSetup = (() => {
 
     KeyHandler.on('DOWN', () => {
       if (typeof Router === 'undefined' || !Router.isView('setup')) return;
+      if (_setupZone === 'exit') return true;
       if (_setupZone === 'tabs') {
         _setupZone = 'content';
         _setupContentIdx = 0;
@@ -254,6 +290,7 @@ const ViewSetup = (() => {
 
     KeyHandler.on('UP', () => {
       if (typeof Router === 'undefined' || !Router.isView('setup')) return;
+      if (_setupZone === 'exit') return true;
       if (_setupZone === 'content') {
         const activeTab = document.querySelector('#view-setup .tab-btn.active')?.dataset.tab;
         if (activeTab === 'saved') {
@@ -275,6 +312,14 @@ const ViewSetup = (() => {
 
     KeyHandler.on('ENTER', () => {
       if (typeof Router === 'undefined' || !Router.isView('setup')) return;
+      if (_setupZone === 'exit') {
+        if (_exitFocusIdx === 0) {
+          _hideExitPopup();
+        } else {
+          try { tizen?.application?.getCurrentApplication()?.exit(); } catch(e) {}
+        }
+        return true;
+      }
       if (_setupZone === 'tabs') {
         _getSetupTabs()[_setupTabIdx]?.click();
         _setupZone = 'content';
@@ -287,6 +332,21 @@ const ViewSetup = (() => {
           else el.click();
         }
       }
+      return true;
+    });
+
+    KeyHandler.on('BACK', () => {
+      if (typeof Router === 'undefined' || !Router.isView('setup')) return;
+      if (_setupZone === 'exit') {
+        _hideExitPopup();
+        return true;
+      }
+      const channels = typeof Store !== 'undefined' ? Store.get('channels') : [];
+      if (channels && channels.length > 0) {
+        Router.showView('channels');
+        return true;
+      }
+      _showExitPopup();
       return true;
     });
   }
