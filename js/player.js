@@ -58,12 +58,10 @@ const Player = (() => {
         webapis.avplay.open(playUrl);
 
         // ── CONFIGURACIÓN SEGÚN MODO ──
-        // NOTA: NO llamamos a _applyDisplayRect() aquí para evitar que se dibuje
-        // un cuadro negro en la pantalla durante el buffering y active el Global Dimming.
-        // Se llama dentro de _onBufferingComplete().
+        _applyDisplayRect(false); // Configurar coords nativas, pero con DOM oculto
 
         try {
-          const name = (channel.name || '').toUpperCase();
+          const name = (_current.name || '').toUpperCase();
           const is8K = name.includes('8K');
           const is4K = name.includes('4K') || name.includes('UHD') || name.includes('2160');
           const isHD = name.includes('FHD') || name.includes('HD') || name.includes('1080');
@@ -109,15 +107,20 @@ const Player = (() => {
   // No usamos getBoundingClientRect() porque puede fallar si la vista está oculta.
   const PIP_X = 1400, PIP_Y = 770, PIP_W = 480, PIP_H = 270;
 
-  function _applyDisplayRect() {
+  function _applyDisplayRect(makeVisible = false) {
     const vl = document.getElementById('video-layer');
     if (_mode === 'FULLSCREEN') {
-      if (vl) { vl.style.left='0px'; vl.style.top='0px'; vl.style.width='1920px'; vl.style.height='1080px'; vl.style.visibility='visible'; }
+      if (vl) { 
+        vl.style.left='0px'; vl.style.top='0px'; vl.style.width='1920px'; vl.style.height='1080px'; 
+        if (makeVisible) vl.style.visibility='visible'; 
+      }
       try { webapis.avplay.setDisplayMethod('PLAYER_DISPLAY_MODE_FULL_SCREEN'); } catch(e) {}
       try { webapis.avplay.setDisplayRect(0, 0, 1920, 1080); } catch(e) {}
     } else if (_mode === 'PIP') {
-      // Posicionar video-layer exactamente en el área PiP
-      if (vl) { vl.style.left=PIP_X+'px'; vl.style.top=PIP_Y+'px'; vl.style.width=PIP_W+'px'; vl.style.height=PIP_H+'px'; vl.style.visibility='visible'; }
+      if (vl) { 
+        vl.style.left=PIP_X+'px'; vl.style.top=PIP_Y+'px'; vl.style.width=PIP_W+'px'; vl.style.height=PIP_H+'px'; 
+        if (makeVisible) vl.style.visibility='visible'; 
+      }
       // FULL_SCREEN rellena el rect sin barras negras
       try { webapis.avplay.setDisplayMethod('PLAYER_DISPLAY_MODE_FULL_SCREEN'); } catch(e) {}
       try { webapis.avplay.setDisplayRect(PIP_X, PIP_Y, PIP_W, PIP_H); } catch(e) {}
@@ -150,7 +153,7 @@ const Player = (() => {
     cancelPreview();
     _mode = 'FULLSCREEN';
     _hidePip();
-    _applyDisplayRect();
+    _applyDisplayRect(true);
   }
 
   // ── PREVIEW RÁPIDO AL NAVEGAR LA LISTA ───────────────
@@ -192,13 +195,13 @@ const Player = (() => {
         let url = ch.url;
         if (url.includes('|')) url = url.split('|')[0];
         webapis.avplay.open(url);
-        // NO llamar a _applyDisplayRect() aquí para evitar blackout de dimming.
+        _applyDisplayRect(false); // Configurar coords nativas ocultas
         webapis.avplay.setListener({
           onbufferingstart:    () => _setState('BUFFERING'),
           onbufferingcomplete: () => {
             _setState('PLAYING');
             _retryCount = 0;
-            _applyDisplayRect(); // reconfirmar posición después de buffering
+            _applyDisplayRect(true); // Mostrar vídeo!
             document.getElementById('pip-box')?.classList.remove('pip-loading');
           },
           oncurrentplaytime: () => {},
@@ -234,7 +237,7 @@ const Player = (() => {
 
   // ── EVENTS ───────────────────────────────────────────
   function _onBufferingStart()    { _setState('BUFFERING'); }
-  function _onBufferingComplete() { _setState('PLAYING'); _retryCount = 0; _applyDisplayRect(); }
+  function _onBufferingComplete() { _setState('PLAYING'); _retryCount = 0; _applyDisplayRect(true); }
 
   function _onError(err) {
     console.error('AVPlay error', err);
