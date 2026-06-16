@@ -76,10 +76,18 @@ const Player = (() => {
         webapis.avplay.setListener({
           onbufferingstart:    () => _onBufferingStart(),
           onbufferingcomplete: () => _onBufferingComplete(),
-          oncurrentplaytime:   ()  => _updateProgress(),
+          oncurrentplaytime:   () => {
+            if (_state === 'BUFFERING') {
+              _setState('PLAYING');
+              _retryCount = 0;
+            }
+          },
           onevent:             (type) => {
             if (type === 'PLAYER_MSG_END_OF_STREAM')
               setTimeout(() => { if (_current) play(_current); }, 1000);
+            if (type === 'PLAYER_MSG_BITRATE_CHANGE' || type === 'PLAYER_MSG_RESOLUTION_CHANGED') {
+              if (_state === 'BUFFERING') _setState('PLAYING');
+            }
           },
           onerror:           (err) => _onError(err),
           ondrmevent:        () => {},
@@ -199,8 +207,21 @@ const Player = (() => {
             _applyDisplayRect(); // reconfirmar posición después de buffering
             document.getElementById('pip-box')?.classList.remove('pip-loading');
           },
-          oncurrentplaytime: () => {},
-          onevent:  () => {},
+          oncurrentplaytime: () => {
+            if (_state === 'BUFFERING') {
+              _setState('PLAYING');
+              _retryCount = 0;
+              document.getElementById('pip-box')?.classList.remove('pip-loading');
+            }
+          },
+          onevent:  (type) => {
+            if (type === 'PLAYER_MSG_BITRATE_CHANGE' || type === 'PLAYER_MSG_RESOLUTION_CHANGED') {
+              if (_state === 'BUFFERING') {
+                _setState('PLAYING');
+                document.getElementById('pip-box')?.classList.remove('pip-loading');
+              }
+            }
+          },
           onerror:  () => _hidePip(),
           ondrmevent: () => {},
           onstreamcompleted: () => {},
