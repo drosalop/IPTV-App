@@ -171,6 +171,9 @@ const Player = (() => {
 
   function cancelPreview() {
     clearTimeout(_previewTimer);
+    _safeStop();
+    const pipBox = document.getElementById('pip-box');
+    if (pipBox) pipBox.style.background = ''; // Inmediatamente volver a negro
   }
 
   function _startPip(ch) {
