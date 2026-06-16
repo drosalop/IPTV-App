@@ -36,14 +36,19 @@ const ViewChannels = (() => {
   let _sidebarFocusablesCache = null;
   let _countryFocusIdx = 0;
 
-  function onShow() {
+  function onShow(fromView) {
     initKeys();
     _updateCountriesList();
     renderCountries();
     _updateGroupCounts();
     
-    // Al entrar, el foco se sitúa en los países
-    _setFocusZone('countries');
+    // Si volvemos del reproductor, mantenemos el foco en la lista de canales
+    if (fromView === 'player') {
+      _setFocusZone('channels');
+    } else {
+      // Al entrar por primera vez u otra vista, el foco se sitúa en los países
+      _setFocusZone('countries');
+    }
 
     // Si el reproductor tiene canal en PiP, reafirmar su posición
     if (typeof Player !== 'undefined') {
@@ -52,6 +57,7 @@ const ViewChannels = (() => {
       }
     }
   }
+
 
 
   function _updateCountriesList() {

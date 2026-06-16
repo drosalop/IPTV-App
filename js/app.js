@@ -68,6 +68,9 @@ const App = (() => {
   async function loadList(list) {
     Store.set('currentList', list);
     Storage.setLastList(list.id);
+    if (typeof Favorites !== 'undefined') {
+      Favorites.init();
+    }
 
     const cached = Storage.getChannelCache(list.id);
     if (cached) {

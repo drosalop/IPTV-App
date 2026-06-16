@@ -1,11 +1,13 @@
 /**
- * favorites.js — Favorite channels management
+ * favorites.js — Favorite channels management (list-specific)
  */
 const Favorites = (() => {
   let _favIds = new Set();
 
   function init() {
-    _favIds = new Set(Storage.getFavs());
+    const list = typeof Store !== 'undefined' ? Store.get('currentList') : null;
+    const listId = list ? list.id : null;
+    _favIds = new Set(Storage.getFavs(listId));
   }
 
   function toggle(channelId) {
@@ -24,7 +26,11 @@ const Favorites = (() => {
 
   function getIds() { return Array.from(_favIds); }
 
-  function _save() { Storage.saveFavs(Array.from(_favIds)); }
+  function _save() {
+    const list = typeof Store !== 'undefined' ? Store.get('currentList') : null;
+    const listId = list ? list.id : null;
+    Storage.saveFavs(listId, Array.from(_favIds));
+  }
 
   return { init, toggle, isFav, getIds };
 })();

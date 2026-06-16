@@ -4,14 +4,18 @@
 const Router = (() => {
   let _toastTimer = null;
 
+  let _currentView = 'setup';
+
   function showView(name) {
+    const fromView = _currentView;
+    _currentView = name;
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     const el = document.getElementById('view-' + name);
     if (el) el.classList.add('active');
 
     // Avisar a los controladores de vista si existen
     if (name === 'channels' && typeof ViewChannels !== 'undefined') {
-      ViewChannels.onShow();
+      ViewChannels.onShow(fromView);
     }
     if (name === 'setup') {
       if (typeof Player !== 'undefined') Player.stop();
@@ -20,6 +24,7 @@ const Router = (() => {
       }
     }
   }
+
 
   function isView(name) {
     const el = document.getElementById('view-' + name);

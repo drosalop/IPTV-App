@@ -20,8 +20,15 @@ const Storage = (() => {
 
   const getLists    = ()      => get('lists', []);
   const saveLists   = (lists) => set('lists', lists);
-  const getFavs     = ()      => get('favorites', []);
-  const saveFavs    = (favs)  => set('favorites', favs);
+  const getFavs     = (listId) => {
+    if (!listId) return get('favorites', []);
+    return get('favorites_' + listId, []);
+  };
+  const saveFavs    = (listId, favs) => {
+    if (!listId) return set('favorites', favs);
+    return set('favorites_' + listId, favs);
+  };
+
 
   const getLastList = ()      => get('last_list', null);
   const setLastList = (id)    => set('last_list', id);
