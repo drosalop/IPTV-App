@@ -115,12 +115,26 @@ const Player = (() => {
   function _applyDisplayRect() {
     const vl = document.getElementById('video-layer');
     if (_mode === 'FULLSCREEN') {
-      if (vl) { vl.style.width = '1920px'; vl.style.height = '1080px'; }
+      // Restaurar video-layer a toda la pantalla
+      if (vl) {
+        vl.style.left   = '0px';
+        vl.style.top    = '0px';
+        vl.style.width  = '1920px';
+        vl.style.height = '1080px';
+      }
       try { webapis.avplay.setDisplayMethod('PLAYER_DISPLAY_MODE_FULL_SCREEN'); } catch(e) {}
       try { webapis.avplay.setDisplayRect(0, 0, 1920, 1080); } catch(e) {}
     } else if (_mode === 'PIP') {
       const { x, y, w, h } = _getPipRect();
-      if (vl) { vl.style.width = '1920px'; vl.style.height = '1080px'; }
+      // CLAVE: video-layer debe ocupar SÓLO el área del PiP
+      // Si dejamos video-layer en 1920x1080 se pinta de negro y tapa los canales
+      if (vl) {
+        vl.style.left   = x + 'px';
+        vl.style.top    = y + 'px';
+        vl.style.width  = w + 'px';
+        vl.style.height = h + 'px';
+      }
+      // setDisplayRect con coords absolutas de pantalla
       try { webapis.avplay.setDisplayMethod('PLAYER_DISPLAY_MODE_LETTER_BOX'); } catch(e) {}
       try { webapis.avplay.setDisplayRect(x, y, w, h); } catch(e) {}
     }
@@ -187,8 +201,7 @@ const Player = (() => {
     const box = document.getElementById('pip-box');
     if (box) box.classList.add('pip-loading');
 
-    const vl = document.getElementById('video-layer');
-    if (vl) { vl.style.width = '1920px'; vl.style.height = '1080px'; }
+    // NO ponemos video-layer en 1920x1080 aquí; _applyDisplayRect lo ajustará
 
     setTimeout(() => {
       try {
@@ -201,6 +214,7 @@ const Player = (() => {
           onbufferingcomplete: () => {
             _setState('PLAYING');
             _retryCount = 0;
+            _applyDisplayRect(); // reconfirmar rect después del buffering
             const b = document.getElementById('pip-box');
             if (b) b.classList.remove('pip-loading');
           },
@@ -223,7 +237,9 @@ const Player = (() => {
     try {
       const vl = document.getElementById('video-layer');
       if (vl) {
-        vl.style.width = '0px';
+        vl.style.left   = '0px';
+        vl.style.top    = '0px';
+        vl.style.width  = '0px';
         vl.style.height = '0px';
       }
       const s = webapis.avplay.getState();
