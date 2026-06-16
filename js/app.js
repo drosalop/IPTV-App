@@ -76,22 +76,31 @@ const App = (() => {
     }
     _currentAbortController = new AbortController();
 
-    Store.set('currentList', list);
-    Storage.setLastList(list.id);
+    const prevList = Store.get('currentList');
+
     if (typeof Favorites !== 'undefined') {
       Favorites.init();
     }
 
     const cached = Storage.getChannelCache(list.id);
     if (cached) {
-      Store.set('channels', cached);
-      
       const steps = [{ id: 'cache', label: 'Cargando de caché local' }];
       SetupProgress.show('Cargando Lista', list.name, steps);
       SetupProgress.step('cache');
       SetupProgress.progress(100);
+      
       await new Promise(r => setTimeout(r, 400));
+      if (_currentAbortController.signal.aborted) {
+        SetupProgress.hide();
+        Router.showView('setup');
+        _currentAbortController = null;
+        return;
+      }
       SetupProgress.hide();
+
+      Store.set('currentList', list);
+      Storage.setLastList(list.id);
+      Store.set('channels', cached);
 
       await _afterLoad(list, true);
       _currentAbortController = null;
@@ -124,8 +133,16 @@ const App = (() => {
         }, _currentAbortController.signal);
       }
       SetupProgress.progress(100);
+
+      if (_currentAbortController.signal.aborted) {
+        throw new DOMException('Aborted', 'AbortError');
+      }
+
+      Store.set('currentList', list);
+      Storage.setLastList(list.id);
       Store.set('channels', loadedChannels);
       Storage.setChannelCache(list.id, loadedChannels);
+
       await new Promise(r => setTimeout(r, 400));
       SetupProgress.hide();
       await _afterLoad(list);
@@ -133,6 +150,10 @@ const App = (() => {
       SetupProgress.hide();
       if (e.name === 'AbortError') {
         Router.showToast('Carga cancelada', 'info');
+        if (prevList) {
+          Store.set('currentList', prevList);
+          Storage.setLastList(prevList.id);
+        }
       } else {
         Router.showToast('Error cargando lista', 'error');
       }
