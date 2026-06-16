@@ -230,8 +230,49 @@ const ViewSetup = (() => {
       return;
     }
 
-    container.innerHTML = '';
+    const existingItems = container.querySelectorAll('.country-setting-item');
     const visibleCountries = Storage.getVisibleCountries();
+    const isAllChecked = visibleCountries === null || visibleCountries.length === codes.length;
+
+    if (existingItems.length > 0) {
+      existingItems.forEach(item => {
+        const code = item.dataset.code;
+        if (code === 'ALL') {
+          item.classList.toggle('checked', isAllChecked);
+        } else {
+          const isChecked = visibleCountries === null || visibleCountries.includes(code);
+          item.classList.toggle('checked', isChecked);
+        }
+      });
+      return;
+    }
+
+    container.innerHTML = '';
+
+    // Fila "Seleccionar todos"
+    const allItem = document.createElement('div');
+    allItem.className = 'country-setting-item focusable' + (isAllChecked ? ' checked' : '');
+    allItem.dataset.code = 'ALL';
+    allItem.innerHTML = `
+      <div class="checkbox-box">
+        <span class="material-symbols-rounded">check</span>
+      </div>
+      <span class="country-setting-label" style="font-weight: 700;">🌎 Seleccionar todos</span>
+    `;
+    allItem.addEventListener('click', () => {
+      const currentlyChecked = allItem.classList.contains('checked');
+      if (currentlyChecked) {
+        Storage.setVisibleCountries([]);
+      } else {
+        Storage.setVisibleCountries(null);
+      }
+      _renderCountrySettings();
+      _updateSetupFocus();
+      if (typeof ViewChannels !== 'undefined' && Store.get('channels')) {
+        ViewChannels.renderGroups();
+      }
+    });
+    container.appendChild(allItem);
 
     codes.forEach(code => {
       const isChecked = visibleCountries === null || visibleCountries.includes(code);
@@ -239,6 +280,7 @@ const ViewSetup = (() => {
       
       const item = document.createElement('div');
       item.className = 'country-setting-item focusable' + (isChecked ? ' checked' : '');
+      item.dataset.code = code;
       item.innerHTML = `
         <div class="checkbox-box">
           <span class="material-symbols-rounded">check</span>
@@ -270,6 +312,7 @@ const ViewSetup = (() => {
     
     Storage.setVisibleCountries(visibleCountries);
     _renderCountrySettings();
+    _updateSetupFocus();
   }
 
   function onShow() {

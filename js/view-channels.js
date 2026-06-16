@@ -239,7 +239,7 @@ const ViewChannels = (() => {
       el.classList.toggle('active', codes[i] === currentCountry);
       
       if (i === _countryFocusIdx && _focusZone === 'countries') {
-        el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        el.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'center' });
       }
     });
   }
