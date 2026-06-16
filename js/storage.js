@@ -28,13 +28,10 @@ const Storage = (() => {
   const getLastChannel = ()   => get('last_channel', null);
   const setLastChannel = (id) => set('last_channel', id);
 
-  // ── Channel cache (TTL: 6 hours) ──────────────────────
-  const CHANNEL_TTL = 6 * 3600 * 1000;
+  // ── Channel cache ──────────────────────
   const _cacheKey = (listId) => 'ch_cache_' + listId;
   const getChannelCache = (listId) => {
-    const v = get(_cacheKey(listId), null);
-    if (!v || (Date.now() - v.ts) > CHANNEL_TTL) return null;
-    return v.data;
+    return get(_cacheKey(listId), null);
   };
   const setChannelCache = (listId, data) => set(_cacheKey(listId), { ts: Date.now(), data });
   const clearChannelCache = (listId) => del(_cacheKey(listId));

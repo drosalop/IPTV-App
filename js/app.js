@@ -351,10 +351,10 @@ const App = (() => {
     _currentList = list;
     Storage.setLastList(list.id);
 
-    // ── Try channel cache first (TTL 6h) ──
+    // ── Try channel cache first ──
     const cached = Storage.getChannelCache(list.id);
-    if (cached) {
-      _channels = cached;
+    if (cached && cached.data) {
+      _channels = cached.data;
       
       const steps = [{ id: 'cache', label: 'Cargando de caché local' }];
       SetupProgress.show('Cargando Lista', list.name, steps);
@@ -364,6 +364,12 @@ const App = (() => {
       SetupProgress.hide();
 
       await _afterLoad(list, true /* fromCache */);
+
+      // Si la caché tiene más de 12 horas, actualizamos en segundo plano
+      const TTL = 12 * 3600 * 1000;
+      if ((Date.now() - cached.ts) > TTL) {
+        _backgroundSync(list);
+      }
       return;
     }
 
@@ -401,6 +407,36 @@ const App = (() => {
       showToast('Error cargando lista', 'error');
       showView('setup');
       _initSetupView();
+    }
+  }
+
+  async function _backgroundSync(list) {
+    try {
+      let newChannels;
+      if (list.type === 'xtream') {
+        const r = await Playlist.loadXtream(list.server, list.user, list.pass, () => {});
+        newChannels = r.channels;
+        if (!list.epgUrl && r.epgUrl) list.epgUrl = r.epgUrl;
+      } else {
+        newChannels = await Playlist.loadM3U(list.url, () => {});
+      }
+      
+      // Actualizar estado global y caché silenciosamente
+      _channels = newChannels;
+      Storage.setChannelCache(list.id, _channels);
+      Playlist.clearGroupCache();
+      _groups = Playlist.getGroups(_channels);
+      _groupCountsCache = null;
+      Search.init(_channels);
+      
+      // Solo refrescamos la interfaz si estamos en la vista de canales
+      if (_isView('channels')) {
+        _renderGroups();
+        refreshUI();
+      }
+      showToast('Lista actualizada automáticamente', 'success');
+    } catch(e) {
+      console.error('Background sync failed', e);
     }
   }
 
