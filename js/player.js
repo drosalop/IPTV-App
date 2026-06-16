@@ -112,30 +112,19 @@ const Player = (() => {
     if (_mode === 'FULLSCREEN') {
       if (vl) { 
         vl.style.left='0px'; vl.style.top='0px'; vl.style.width='1920px'; vl.style.height='1080px'; 
-        if (makeVisible) vl.style.visibility='visible'; 
+        vl.style.visibility = makeVisible ? 'visible' : 'hidden';
       }
-      if (makeVisible) {
-        try { webapis.avplay.setDisplayMethod('PLAYER_DISPLAY_MODE_FULL_SCREEN'); } catch(e) {}
-        try { webapis.avplay.setDisplayRect(0, 0, 1920, 1080); } catch(e) {}
-      } else {
-        try { webapis.avplay.setDisplayMethod('PLAYER_DISPLAY_MODE_CUSTOM'); } catch(e) {}
-        try { webapis.avplay.setDisplayRect(0, 0, 0, 0); } catch(e) {}
-      }
+      try { webapis.avplay.setDisplayMethod('PLAYER_DISPLAY_MODE_CUSTOM'); } catch(e) {}
+      try { webapis.avplay.setDisplayRect(0, 0, 1920, 1080); } catch(e) {}
     } else if (_mode === 'PIP') {
       const pipBox = document.getElementById('pip-box');
       if (vl) { 
         vl.style.left=PIP_X+'px'; vl.style.top=PIP_Y+'px'; vl.style.width=PIP_W+'px'; vl.style.height=PIP_H+'px'; 
-        if (makeVisible) vl.style.visibility='visible'; 
+        vl.style.visibility = makeVisible ? 'visible' : 'hidden';
       }
-      if (makeVisible) {
-        if (pipBox) pipBox.style.background = 'transparent';
-        try { webapis.avplay.setDisplayMethod('PLAYER_DISPLAY_MODE_FULL_SCREEN'); } catch(e) {}
-        try { webapis.avplay.setDisplayRect(PIP_X, PIP_Y, PIP_W, PIP_H); } catch(e) {}
-      } else {
-        if (pipBox) pipBox.style.background = '';
-        try { webapis.avplay.setDisplayMethod('PLAYER_DISPLAY_MODE_CUSTOM'); } catch(e) {}
-        try { webapis.avplay.setDisplayRect(0, 0, 0, 0); } catch(e) {}
-      }
+      if (pipBox) pipBox.style.background = makeVisible ? 'transparent' : '';
+      try { webapis.avplay.setDisplayMethod('PLAYER_DISPLAY_MODE_CUSTOM'); } catch(e) {}
+      try { webapis.avplay.setDisplayRect(PIP_X, PIP_Y, PIP_W, PIP_H); } catch(e) {}
     }
   }
 
