@@ -118,7 +118,8 @@ const Player = (() => {
       if (makeVisible) {
         try { webapis.avplay.setDisplayRect(0, 0, 1920, 1080); } catch(e) {}
       } else {
-        try { webapis.avplay.setDisplayRect(0, 0, 0, 0); } catch(e) {}
+        // Enviar la imagen fuera de la pantalla para evitar cuadros negros sin romper la escala
+        try { webapis.avplay.setDisplayRect(2000, 2000, 1920, 1080); } catch(e) {}
       }
     } else if (_mode === 'PIP') {
       if (vl) { 
@@ -130,7 +131,8 @@ const Player = (() => {
       if (makeVisible) {
         try { webapis.avplay.setDisplayRect(PIP_X, PIP_Y, PIP_W, PIP_H); } catch(e) {}
       } else {
-        try { webapis.avplay.setDisplayRect(0, 0, 0, 0); } catch(e) {}
+        // Enviar miniatura fuera de pantalla durante la carga
+        try { webapis.avplay.setDisplayRect(2000, 2000, PIP_W, PIP_H); } catch(e) {}
       }
     }
   }
@@ -174,7 +176,7 @@ const Player = (() => {
     clearTimeout(_previewTimer);
     _previewTimer = setTimeout(() => {
       _startPip(ch);
-    }, 400); // Reducido a 400ms para que se sienta más rápido
+    }, 200); // Reducido a 200ms para máxima rapidez
   }
 
   function cancelPreview() {
