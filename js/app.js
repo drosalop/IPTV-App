@@ -8,7 +8,6 @@ const App = (() => {
   let _groupCountsCache = null;
   let _sidebarFocusIdx = 2; // 0=search, 1=setup, 2+=groups
   let _currentGroup    = '__all__';
-  let _currentList     = null;
   let _focusZone       = 'channels'; // 'groups' | 'channels'
   let _groupIdx        = 0;
   let _toastTimer      = null;
@@ -76,7 +75,11 @@ const App = (() => {
 
   // ── VIEWS ─────────────────────────────────────────────
   function showView(name) {
-    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v => {
+      // El reproductor es un overlay transparente, mantener la vista actual de fondo
+      if (name === 'player' && v.classList.contains('active')) return;
+      v.classList.remove('active');
+    });
     const el = document.getElementById('view-' + name);
     if (el) el.classList.add('active');
     if (name === 'channels') {
