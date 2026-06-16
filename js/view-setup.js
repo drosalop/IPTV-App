@@ -54,9 +54,9 @@ const ViewSetup = (() => {
     if (!el) return;
     if (!lists.length) { el.innerHTML = '<p class="empty-msg">No hay listas guardadas</p>'; return; }
     el.innerHTML = '';
-    const defaultId = Storage.getDefaultList();
+    const defaultListId = Storage.getDefaultList();
     lists.forEach(list => {
-      const isDefault = defaultId === list.id;
+      const isDefault = defaultListId === list.id;
       const item = document.createElement('div');
       item.className = 'saved-item focusable';
       item.innerHTML = `
@@ -66,12 +66,12 @@ const ViewSetup = (() => {
           <div class="saved-item-type">${list.type === 'xtream' ? 'Xtream · ' + list.server : 'M3U8'}</div>
         </div>
         <div style="display:flex; gap:8px;">
-          <button class="saved-item-default" data-id="${list.id}"><span class="material-symbols-rounded" style="font-size: 20px; ${isDefault ? 'color: var(--yellow);' : ''}">${isDefault ? 'star' : 'star_border'}</span></button>
+          <button class="saved-item-default" data-id="${list.id}"><span class="material-symbols-rounded" style="font-size: 20px; color: ${isDefault ? 'var(--yellow)' : 'var(--text-sec)'};">${isDefault ? 'star' : 'star_border'}</span></button>
           <button class="saved-item-edit" data-id="${list.id}"><span class="material-symbols-rounded" style="font-size: 20px;">edit</span></button>
           <button class="saved-item-del" data-id="${list.id}"><span class="material-symbols-rounded" style="font-size: 20px;">delete</span></button>
         </div>`;
       
-      item.querySelector('.saved-item-default').addEventListener('click', e => { e.stopPropagation(); _setDefaultList(list.id); });
+      item.querySelector('.saved-item-default').addEventListener('click', e => { e.stopPropagation(); _toggleDefaultList(list.id); });
       item.querySelector('.saved-item-edit').addEventListener('click', e => { e.stopPropagation(); _editList(list); });
       item.querySelector('.saved-item-del').addEventListener('click', e => { e.stopPropagation(); _deleteList(list.id); });
       item.addEventListener('click', () => {
@@ -81,7 +81,7 @@ const ViewSetup = (() => {
     });
   }
 
-  function _setDefaultList(id) {
+  function _toggleDefaultList(id) {
     const currentDefault = Storage.getDefaultList();
     if (currentDefault === id) {
       Storage.setDefaultList(null);
@@ -157,17 +157,8 @@ const ViewSetup = (() => {
     } catch { _setStatus('xt-status', '✗ No se puede conectar', 'error'); }
   }
 
-  function _updatePipBtnState() {
-    const btn = document.getElementById('btn-toggle-pip');
-    if (!btn) return;
-    const enabled = Storage.getPipEnabled();
-    btn.textContent = enabled ? 'Desactivar' : 'Activar';
-    btn.className = enabled ? 'btn-primary' : 'btn-secondary';
-  }
-
   function onShow() {
     _renderSavedLists();
-    _updatePipBtnState();
 
     const handleRemoteList = (list) => {
       list.id = list.id || _uid();
@@ -194,15 +185,6 @@ const ViewSetup = (() => {
         _updateSetupFocus();
       })
     );
-
-    document.getElementById('btn-toggle-pip')?.addEventListener('click', () => {
-      const current = Storage.getPipEnabled();
-      Storage.setPipEnabled(!current);
-      _updatePipBtnState();
-      if (typeof Router !== 'undefined') {
-        Router.showToast(Storage.getPipEnabled() ? 'Vista previa (PiP) activada' : 'Vista previa (PiP) desactivada', 'info');
-      }
-    });
 
     document.getElementById('btn-add-xtream')?.addEventListener('click', () => _addXtream());
     document.getElementById('btn-test-xtream')?.addEventListener('click', () => _testXtream());

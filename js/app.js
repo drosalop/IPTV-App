@@ -9,9 +9,9 @@ const App = (() => {
     Favorites.init();
 
     const defaultListId = Storage.getDefaultList();
-    const lastListId = defaultListId || Storage.getLastList();
+    const activeListId = defaultListId || Storage.getLastList();
     const lists = Storage.getLists();
-    const list = lists.find(l => l.id === lastListId);
+    const list = lists.find(l => l.id === activeListId);
 
     if (list) {
       loadList(list);
@@ -123,13 +123,13 @@ const App = (() => {
     const lastChannelId = Storage.getLastChannel();
     if (lastChannelId) {
       const ch = channels.find(c => c.id === lastChannelId);
-      if (ch && Storage.getPipEnabled()) {
+      if (ch) {
         setTimeout(() => Player.schedulePreview(ch), 300);
       }
     } else {
       setTimeout(() => {
         const ch = VirtualList.getCurrentItem();
-        if (ch && Storage.getPipEnabled()) Player.schedulePreview(ch);
+        if (ch) Player.schedulePreview(ch);
       }, 300);
     }
 
