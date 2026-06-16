@@ -184,9 +184,7 @@ const Player = (() => {
     _mode = 'PIP';
     _setState('BUFFERING');
     _showPip(ch);
-
-    const box = document.getElementById('pip-box');
-    if (box) box.classList.add('pip-loading');
+    // Ya no oscurecemos el pip-box (pip-loading) para una navegación más limpia
 
     // NO ponemos video-layer en 1920x1080 aquí; _applyDisplayRect lo ajustará
 
@@ -202,7 +200,6 @@ const Player = (() => {
             _setState('PLAYING');
             _retryCount = 0;
             _applyDisplayRect(true); // Mostrar vídeo!
-            document.getElementById('pip-box')?.classList.remove('pip-loading');
           },
           oncurrentplaytime: () => {},
           onevent:  () => {},
@@ -259,12 +256,16 @@ const Player = (() => {
     }
 
     _retryCount = 0;
-    const errEl = document.getElementById('player-error');
-    if (errEl) errEl.classList.remove('hidden');
-    setTimeout(() => { 
-      if (errEl) errEl.classList.add('hidden');
-      if (_isActive()) App.showView('channels');
-    }, 4000);
+    
+    // Solo mostramos la tarjeta de error gigante si estamos a pantalla completa
+    if (_isActive()) {
+      const errEl = document.getElementById('player-error');
+      if (errEl) errEl.classList.remove('hidden');
+      setTimeout(() => { 
+        if (errEl) errEl.classList.add('hidden');
+        if (_isActive()) App.showView('channels');
+      }, 4000);
+    }
   }
 
   function _setState(s) {
