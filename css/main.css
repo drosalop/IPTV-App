@@ -375,6 +375,7 @@ html, body {
   flex: 1;
   list-style: none;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 8px 0;
 }
 
@@ -398,6 +399,11 @@ html, body {
   border-left-color: var(--accent);
   color: var(--accent);
   font-weight: 600;
+}
+.group-item span:first-child {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .group-item .group-count {
   margin-left: auto;
