@@ -383,12 +383,11 @@ html, body {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 20px 20px 14px 20px;
+  padding: 18px 20px;
   cursor: pointer;
   border-left: 3px solid transparent;
   transition: all 0.15s;
   font-size: 18px;
-  line-height: 1.3;
   color: var(--text-sec);
 }
 .group-item:hover, .group-item.focused {
@@ -405,6 +404,8 @@ html, body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  padding-top: 4px;
+  line-height: 1.3;
 }
 .group-item .group-count {
   margin-left: auto;
