@@ -323,9 +323,18 @@ const ViewChannels = (() => {
 
   function _selectGroup(group) {
     if (!group) return;
+    const prevGroup = Store.get('currentGroup');
     const groups = Store.get('groups');
-    Store.set('currentGroup', group.id);
     const gIdx = groups.findIndex(g => g.id === group.id);
+
+    if (prevGroup === group.id) {
+      _sidebarFocusIdx = gIdx + 2;
+      _updateGroupClasses();
+      _setFocusZone('channels');
+      return;
+    }
+
+    Store.set('currentGroup', group.id);
     Store.set('groupIdx', gIdx);
     _sidebarFocusIdx = gIdx + 2;
     _updateGroupClasses();
