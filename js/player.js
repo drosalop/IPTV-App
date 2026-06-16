@@ -102,41 +102,23 @@ const Player = (() => {
     }, 50);
   }
 
-  // ── LAYOUT HELPERS ──────────────────────────────────
-  // Calcula las coordenadas absolutas del pip-box en pantalla
-  function _getPipRect() {
-    const pip = document.getElementById('pip-box');
-    if (!pip) return { x: 1400, y: 770, w: 480, h: 270 };
-    const r = pip.getBoundingClientRect();
-    // getBoundingClientRect devuelve coords CSS (1920-wide viewport)
-    return { x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height) };
-  }
+  // Coordenadas fijas calculadas del CSS de .pip-box
+  // .pip-box { bottom:40; right:40; width:480; height:270 } en viewport 1920x1080
+  // No usamos getBoundingClientRect() porque puede fallar si la vista está oculta.
+  const PIP_X = 1400, PIP_Y = 770, PIP_W = 480, PIP_H = 270;
 
   function _applyDisplayRect() {
     const vl = document.getElementById('video-layer');
     if (_mode === 'FULLSCREEN') {
-      // Restaurar video-layer a toda la pantalla
-      if (vl) {
-        vl.style.left   = '0px';
-        vl.style.top    = '0px';
-        vl.style.width  = '1920px';
-        vl.style.height = '1080px';
-      }
+      if (vl) { vl.style.left='0px'; vl.style.top='0px'; vl.style.width='1920px'; vl.style.height='1080px'; }
       try { webapis.avplay.setDisplayMethod('PLAYER_DISPLAY_MODE_FULL_SCREEN'); } catch(e) {}
       try { webapis.avplay.setDisplayRect(0, 0, 1920, 1080); } catch(e) {}
     } else if (_mode === 'PIP') {
-      const { x, y, w, h } = _getPipRect();
-      // CLAVE: video-layer debe ocupar SÓLO el área del PiP
-      // Si dejamos video-layer en 1920x1080 se pinta de negro y tapa los canales
-      if (vl) {
-        vl.style.left   = x + 'px';
-        vl.style.top    = y + 'px';
-        vl.style.width  = w + 'px';
-        vl.style.height = h + 'px';
-      }
-      // setDisplayRect con coords absolutas de pantalla
-      try { webapis.avplay.setDisplayMethod('PLAYER_DISPLAY_MODE_LETTER_BOX'); } catch(e) {}
-      try { webapis.avplay.setDisplayRect(x, y, w, h); } catch(e) {}
+      // Posicionar video-layer exactamente en el área PiP
+      if (vl) { vl.style.left=PIP_X+'px'; vl.style.top=PIP_Y+'px'; vl.style.width=PIP_W+'px'; vl.style.height=PIP_H+'px'; }
+      // FULL_SCREEN rellena el rect sin barras negras
+      try { webapis.avplay.setDisplayMethod('PLAYER_DISPLAY_MODE_FULL_SCREEN'); } catch(e) {}
+      try { webapis.avplay.setDisplayRect(PIP_X, PIP_Y, PIP_W, PIP_H); } catch(e) {}
     }
   }
 
@@ -214,9 +196,8 @@ const Player = (() => {
           onbufferingcomplete: () => {
             _setState('PLAYING');
             _retryCount = 0;
-            _applyDisplayRect(); // reconfirmar rect después del buffering
-            const b = document.getElementById('pip-box');
-            if (b) b.classList.remove('pip-loading');
+            _applyDisplayRect(); // reconfirmar posición después de buffering
+            document.getElementById('pip-box')?.classList.remove('pip-loading');
           },
           oncurrentplaytime: () => {},
           onevent:  () => {},
@@ -307,14 +288,10 @@ const Player = (() => {
 
     KeyHandler.on('BACK', () => {
       if (_isActive() && _current) {
-        // 1. Marcar modo PiP
         _mode = 'PIP';
-        // 2. Mostrar view-channels PRIMERO (pip-box pasa a ser visible en DOM)
         App.showView('channels');
-        // 3. Mostrar el recuadro del PiP
         _showPip(_current);
-        // 4. Calcular getBoundingClientRect DESPUÉS de que el DOM esté pintado
-        setTimeout(() => _applyDisplayRect(), 0);
+        _applyDisplayRect(); // coords fijas → no necesita esperar al DOM
         return true;
       }
     });
@@ -543,6 +520,7 @@ const Player = (() => {
   function getCurrent()   { return _current; }
   function getState()     { return _state; }
   function getMode()      { return _mode; }
+  function reapplyPip()   { if (_mode === 'PIP') _applyDisplayRect(); }
   function _isActive()    { return document.getElementById('view-player')?.classList.contains('active'); }
-  return { init, play, stop, getCurrent, getState, getMode, shrinkToPip, expandToFullscreen, schedulePreview, cancelPreview };
+  return { init, play, stop, getCurrent, getState, getMode, reapplyPip, shrinkToPip, expandToFullscreen, schedulePreview, cancelPreview };
 })();

@@ -72,6 +72,13 @@ const App = (() => {
           if (target) KeyHandler.setFocus(target);
         }, 50);
       }
+      // Si el reproductor tiene canal en PiP, reafirmar su posición
+      // Si no hay nada reproduciéndose, arrancar preview del canal enfocado
+      if (typeof Player !== 'undefined') {
+        if (Player.getMode() === 'PIP' && Player.getCurrent()) {
+          Player.reapplyPip();
+        }
+      }
     }
     if (name === 'epg')      _renderEPGView();
     if (name === 'setup')    _initSetupView();
