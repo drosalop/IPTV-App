@@ -416,11 +416,20 @@ const App = (() => {
     renderChannels();
     _setFocusZone('channels');
 
-    // Autocargar último canal si existe
+    // Autocargar último canal: en PiP (no a pantalla completa) para mantener la lista visible
     const lastChannelId = Storage.getLastChannel();
     if (lastChannelId) {
       const ch = _channels.find(c => c.id === lastChannelId);
-      if (ch) _playChannel(ch);
+      if (ch) {
+        // Pequeño delay para que VirtualList y el DOM estén listos
+        setTimeout(() => Player.schedulePreview(ch), 300);
+      }
+    } else {
+      // Sin último canal: preview del primer canal de la lista
+      setTimeout(() => {
+        const ch = VirtualList.getCurrentItem();
+        if (ch) Player.schedulePreview(ch);
+      }, 300);
     }
   }
 
