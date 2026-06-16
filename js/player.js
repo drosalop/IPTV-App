@@ -37,9 +37,6 @@ const Player = (() => {
 
     App.showView('player');
     showOSD();
-    
-    // Petición EPG instantánea específica para este canal
-    _fetchShortEpg(ch);
 
     const vl = document.getElementById('video-layer');
     if (vl) {
@@ -57,6 +54,7 @@ const Player = (() => {
 
         webapis.avplay.open(playUrl);
         try { webapis.avplay.setDisplayMethod('PLAYER_DISPLAY_MODE_CUSTOM'); } catch(e) {}
+        try { webapis.avplay.setDisplayRect(0, 0, 1920, 1080); } catch(e) {}
 
         // ── CONFIGURACIÓN SEGÚN MODO ──
         _applyDisplayRect(false); // Configurar coords nativas, pero con DOM oculto
@@ -115,7 +113,6 @@ const Player = (() => {
         vl.style.left='0px'; vl.style.top='0px'; vl.style.width='1920px'; vl.style.height='1080px'; 
         vl.style.visibility = makeVisible ? 'visible' : 'hidden';
       }
-      try { webapis.avplay.setDisplayRect(0, 0, 1920, 1080); } catch(e) {}
     } else if (_mode === 'PIP') {
       const pipBox = document.getElementById('pip-box');
       if (vl) { 
@@ -123,7 +120,6 @@ const Player = (() => {
         vl.style.visibility = makeVisible ? 'visible' : 'hidden';
       }
       if (pipBox) pipBox.style.background = makeVisible ? 'transparent' : '#000';
-      try { webapis.avplay.setDisplayRect(PIP_X, PIP_Y, PIP_W, PIP_H); } catch(e) {}
     }
   }
 
@@ -197,6 +193,7 @@ const Player = (() => {
         if (url.includes('|')) url = url.split('|')[0];
         webapis.avplay.open(url);
         try { webapis.avplay.setDisplayMethod('PLAYER_DISPLAY_MODE_CUSTOM'); } catch(e) {}
+        try { webapis.avplay.setDisplayRect(PIP_X, PIP_Y, PIP_W, PIP_H); } catch(e) {}
         
         _applyDisplayRect(false); // Configurar coords nativas ocultas
         
@@ -417,53 +414,12 @@ const Player = (() => {
       }
     }
 
-    _updateEpgOSD();
-
     osd.classList.remove('hidden');
     clearTimeout(_osdTimer);
-    clearInterval(_osdPollInterval);
-
-    // Poll EPG in case it is still loading in background
-    _osdPollInterval = setInterval(_updateEpgOSD, 1000);
 
     _osdTimer = setTimeout(() => {
       osd.classList.add('hidden');
-      clearInterval(_osdPollInterval);
     }, 3000);
-  }
-
-  function _updateEpgOSD() {
-    if (!_current) return;
-    const nowEl = document.getElementById('osd-now');
-    const nextEl = document.getElementById('osd-next');
-    const clockEl = document.getElementById('osd-clock');
-
-    if (clockEl) {
-      clockEl.textContent = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-    }
-    
-    let nowP = null;
-    let nextP = null;
-
-    // 1. Try global EPG if available
-    if (typeof EPG !== 'undefined' && _current.epgId) {
-      nowP = EPG.getNow(_current.epgId);
-      if (!nextP) nextP = EPG.getNext(_current.epgId);
-    }
-    
-    // 2. Try short EPG fallback
-    if (!nowP && _current._shortEpgData) {
-      nowP = _current._shortEpgData.nowP;
-      nextP = _current._shortEpgData.nextP;
-    }
-
-    if (nowP) {
-      if (nowEl) nowEl.textContent = `Ahora: ${nowP.title} (${_fmt(nowP.start)} - ${_fmt(nowP.end)})`;
-      if (nextEl) nextEl.textContent = nextP ? `Después: ${nextP.title} (${_fmt(nextP.start)} - ${_fmt(nextP.end)})` : '';
-    } else {
-      if (nowEl) nowEl.textContent = _current._shortEpgFetched ? 'Sin información de programación' : 'Buscando programación...';
-      if (nextEl) nextEl.textContent = '';
-    }
   }
 
   async function _fetchShortEpg(ch) {
