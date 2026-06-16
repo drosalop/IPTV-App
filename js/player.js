@@ -114,25 +114,24 @@ const Player = (() => {
         vl.style.left='0px'; vl.style.top='0px'; vl.style.width='1920px'; vl.style.height='1080px'; 
         if (makeVisible) vl.style.visibility='visible'; 
       }
-      try { webapis.avplay.setDisplayMethod('PLAYER_DISPLAY_MODE_FULL_SCREEN'); } catch(e) {}
       if (makeVisible) {
+        try { webapis.avplay.setDisplayMethod('PLAYER_DISPLAY_MODE_FULL_SCREEN'); } catch(e) {}
         try { webapis.avplay.setDisplayRect(0, 0, 1920, 1080); } catch(e) {}
       } else {
-        // Enviar la imagen fuera de la pantalla para evitar cuadros negros sin romper la escala
-        try { webapis.avplay.setDisplayRect(2000, 2000, 1920, 1080); } catch(e) {}
+        try { webapis.avplay.setDisplayMethod('PLAYER_DISPLAY_MODE_CUSTOM'); } catch(e) {}
+        try { webapis.avplay.setDisplayRect(0, 0, 0, 0); } catch(e) {}
       }
     } else if (_mode === 'PIP') {
       if (vl) { 
         vl.style.left=PIP_X+'px'; vl.style.top=PIP_Y+'px'; vl.style.width=PIP_W+'px'; vl.style.height=PIP_H+'px'; 
         if (makeVisible) vl.style.visibility='visible'; 
       }
-      // FULL_SCREEN rellena el rect sin barras negras
-      try { webapis.avplay.setDisplayMethod('PLAYER_DISPLAY_MODE_FULL_SCREEN'); } catch(e) {}
       if (makeVisible) {
+        try { webapis.avplay.setDisplayMethod('PLAYER_DISPLAY_MODE_FULL_SCREEN'); } catch(e) {}
         try { webapis.avplay.setDisplayRect(PIP_X, PIP_Y, PIP_W, PIP_H); } catch(e) {}
       } else {
-        // Enviar miniatura fuera de pantalla durante la carga
-        try { webapis.avplay.setDisplayRect(2000, 2000, PIP_W, PIP_H); } catch(e) {}
+        try { webapis.avplay.setDisplayMethod('PLAYER_DISPLAY_MODE_CUSTOM'); } catch(e) {}
+        try { webapis.avplay.setDisplayRect(0, 0, 0, 0); } catch(e) {}
       }
     }
   }
