@@ -196,7 +196,15 @@ const ViewSetup = (() => {
         _setupTabIdx = Math.min(_getSetupTabs().length - 1, _setupTabIdx + 1);
         _getSetupTabs()[_setupTabIdx]?.click();
       } else {
-        _setupContentIdx = Math.min(_getSetupContent().length - 1, _setupContentIdx + 1);
+        const activeTab = document.querySelector('#view-setup .tab-btn.active')?.dataset.tab;
+        if (activeTab === 'saved') {
+          const row = Math.floor(_setupContentIdx / 4);
+          const col = _setupContentIdx % 4;
+          const newCol = Math.min(3, col + 1);
+          _setupContentIdx = row * 4 + newCol;
+        } else {
+          _setupContentIdx = Math.min(_getSetupContent().length - 1, _setupContentIdx + 1);
+        }
         _updateSetupFocus();
       }
       return true;
@@ -208,7 +216,15 @@ const ViewSetup = (() => {
         _setupTabIdx = Math.max(0, _setupTabIdx - 1);
         _getSetupTabs()[_setupTabIdx]?.click();
       } else {
-        _setupContentIdx = Math.max(0, _setupContentIdx - 1);
+        const activeTab = document.querySelector('#view-setup .tab-btn.active')?.dataset.tab;
+        if (activeTab === 'saved') {
+          const row = Math.floor(_setupContentIdx / 4);
+          const col = _setupContentIdx % 4;
+          const newCol = Math.max(0, col - 1);
+          _setupContentIdx = row * 4 + newCol;
+        } else {
+          _setupContentIdx = Math.max(0, _setupContentIdx - 1);
+        }
         _updateSetupFocus();
       }
       return true;
@@ -220,7 +236,17 @@ const ViewSetup = (() => {
         _setupZone = 'content';
         _setupContentIdx = 0;
       } else {
-        _setupContentIdx = Math.min(_getSetupContent().length - 1, _setupContentIdx + 1);
+        const activeTab = document.querySelector('#view-setup .tab-btn.active')?.dataset.tab;
+        if (activeTab === 'saved') {
+          const listsCount = Storage.getLists().length;
+          const row = Math.floor(_setupContentIdx / 4);
+          const col = _setupContentIdx % 4;
+          if (row < listsCount - 1) {
+            _setupContentIdx = (row + 1) * 4 + col;
+          }
+        } else {
+          _setupContentIdx = Math.min(_getSetupContent().length - 1, _setupContentIdx + 1);
+        }
       }
       _updateSetupFocus();
       return true;
@@ -229,8 +255,19 @@ const ViewSetup = (() => {
     KeyHandler.on('UP', () => {
       if (typeof Router === 'undefined' || !Router.isView('setup')) return;
       if (_setupZone === 'content') {
-        if (_setupContentIdx === 0) _setupZone = 'tabs';
-        else _setupContentIdx--;
+        const activeTab = document.querySelector('#view-setup .tab-btn.active')?.dataset.tab;
+        if (activeTab === 'saved') {
+          const row = Math.floor(_setupContentIdx / 4);
+          const col = _setupContentIdx % 4;
+          if (row > 0) {
+            _setupContentIdx = (row - 1) * 4 + col;
+          } else {
+            _setupZone = 'tabs';
+          }
+        } else {
+          if (_setupContentIdx === 0) _setupZone = 'tabs';
+          else _setupContentIdx--;
+        }
         _updateSetupFocus();
       }
       return true;
