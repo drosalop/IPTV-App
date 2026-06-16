@@ -55,6 +55,23 @@ const App = (() => {
 
       _updateSetupFocus();
     }
+    
+    _startClock();
+  }
+
+  let _clockTimer = null;
+  function _startClock() {
+    const timeEl = document.getElementById('channels-time');
+    const dateEl = document.getElementById('channels-date');
+    if (!timeEl || !dateEl) return;
+    const update = () => {
+      const now = new Date();
+      timeEl.textContent = now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+      dateEl.textContent = now.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+    };
+    update();
+    if (_clockTimer) clearInterval(_clockTimer);
+    _clockTimer = setInterval(update, 10000); // actualizar cada 10s es suficiente para HH:mm
   }
 
   // ── VIEWS ─────────────────────────────────────────────
