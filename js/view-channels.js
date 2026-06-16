@@ -202,7 +202,17 @@ const ViewChannels = (() => {
   }
 
   function _selectCountry(code, idx) {
+    const prevCountry = Store.get('currentCountry');
     _countryFocusIdx = idx;
+    
+    if (prevCountry === code) {
+      const groupIdx = Store.get('groupIdx') || 0;
+      _sidebarFocusIdx = groupIdx + 2;
+      _updateCountryClasses();
+      _setFocusZone('groups');
+      return;
+    }
+
     Store.set('currentCountry', code);
     
     Playlist.clearGroupCache();
@@ -217,6 +227,7 @@ const ViewChannels = (() => {
     _updateCountryClasses();
     renderGroups();
     renderChannels();
+    _setFocusZone('groups');
   }
 
   function _updateCountryClasses() {
@@ -534,8 +545,6 @@ const ViewChannels = (() => {
         const code = codes[_countryFocusIdx];
         if (code) {
           _selectCountry(code, _countryFocusIdx);
-          _sidebarFocusIdx = 2; // Enfoca el primer elemento de categorías ("Todos los canales")
-          _setFocusZone('groups');
         }
         return true;
       }

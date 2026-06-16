@@ -21,6 +21,8 @@ const VirtualList = (() => {
   let _colW        = 0;    // cacheado al inicializar, evita offsetWidth en cada tarjeta
   let _vH          = 900;   // cacheado de offsetHeight
   let _eventsBound = false;
+  let _scrolling   = false;
+  let _scrollTimeout = null;
 
   function init({ containerId, items, onSelect, getFavBadge }) {
     _container   = document.getElementById(containerId);
@@ -129,7 +131,9 @@ const VirtualList = (() => {
       if (i < startIdx || i > endIdx) {
         const el = _domCache[key];
         el.remove();
-        _pool.push(el);
+        if (_pool.length < 30) {
+          _pool.push(el);
+        }
         delete _domCache[key];
       }
     }
@@ -191,9 +195,15 @@ const VirtualList = (() => {
     const img = el.querySelector('.channel-logo');
     if (img) {
       if (ch.logo) {
-        // Solo actualizar src si cambia para evitar parpadeos de red
-        if (img.getAttribute('src') !== ch.logo) img.src = _safeStr(ch.logo);
-        img.style.display = '';
+        if (_scrolling) {
+          // Mientras hace scroll, usar una imagen transparente para evitar congestión de red
+          img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+          img.style.display = '';
+        } else {
+          // Solo actualizar src si cambia para evitar parpadeos de red
+          if (img.getAttribute('src') !== ch.logo) img.src = _safeStr(ch.logo);
+          img.style.display = '';
+        }
       } else {
         img.removeAttribute('src');
         img.style.display = 'none';
@@ -232,11 +242,36 @@ const VirtualList = (() => {
 
   function _onScroll() {
     _scrollTop = _container.scrollTop; // Actualizar el caché real cuando ocurre el evento
+    
+    _scrolling = true;
+    if (_scrollTimeout) clearTimeout(_scrollTimeout);
+    _scrollTimeout = setTimeout(() => {
+      _scrolling = false;
+      _updateVisibleLogos();
+    }, 150);
+
     if (_rafId) return;
     _rafId = requestAnimationFrame(() => {
       _rafId = null;
       _renderVisible();
     });
+  }
+
+  function _updateVisibleLogos() {
+    for (const key in _domCache) {
+      const i = parseInt(key);
+      const el = _domCache[key];
+      const ch = _items[i];
+      if (!ch) continue;
+      const img = el.querySelector('.channel-logo');
+      if (img && ch.logo) {
+        const src = _safeStr(ch.logo);
+        if (img.getAttribute('src') !== src) {
+          img.src = src;
+          img.style.display = '';
+        }
+      }
+    }
   }
 
   function _safeStr(s) {

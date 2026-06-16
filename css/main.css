@@ -57,7 +57,7 @@ html, body {
 .focused, button:focus, input:focus {
   box-shadow: var(--focus-ring);
   /* transform:scale evita reflow si usamos will-change */
-  transform: scale(1.04);
+  transform: scale(1.04) translate3d(0,0,0);
   transition: transform 0.1s, box-shadow 0.1s;
   will-change: transform;
 }
@@ -341,8 +341,7 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(9,11,20,0.75);
-  backdrop-filter: blur(6px);
+  background: rgba(9,11,20,0.92);
   z-index: 200;
   animation: spFadeIn 0.2s ease;
 }
@@ -731,12 +730,11 @@ html, body {
 
 .loading-overlay {
   position: fixed; inset: 0;
-  background: rgba(9,11,20,0.85);
+  background: rgba(9,11,20,0.95);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 500;
-  backdrop-filter: blur(4px);
 }
 .loading-overlay.hidden { display: none; }
 .loading-content { display: flex; flex-direction: column; align-items: center; gap: 20px; }
