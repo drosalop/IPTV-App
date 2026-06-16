@@ -647,12 +647,6 @@ const App = (() => {
       items = list;
     } else {
       items = Playlist.filterByGroup(_channels, _currentGroup, favIds);
-      // Favorites first in "Todos"
-      if (_currentGroup === '__all__') {
-        const favs = items.filter(c => favIds.has(c.id));
-        const rest = items.filter(c => !favIds.has(c.id));
-        items = [...favs, ...rest];
-      }
     }
 
     const cnt = document.getElementById('channel-count');
