@@ -267,10 +267,6 @@ const ViewSetup = (() => {
         Storage.setVisibleCountries(null);
       }
       _renderCountrySettings();
-      _updateSetupFocus();
-      if (typeof ViewChannels !== 'undefined' && Store.get('channels')) {
-        ViewChannels.renderGroups();
-      }
     });
     container.appendChild(allItem);
 
@@ -312,7 +308,6 @@ const ViewSetup = (() => {
     
     Storage.setVisibleCountries(visibleCountries);
     _renderCountrySettings();
-    _updateSetupFocus();
   }
 
   function onShow() {
@@ -370,6 +365,12 @@ const ViewSetup = (() => {
         _getSetupTabs()[_setupTabIdx]?.click();
       } else {
         const activeTab = document.querySelector('#view-setup .tab-btn.active')?.dataset.tab;
+        if (activeTab === 'settings') {
+          _setupTabIdx = (_setupTabIdx + 1) % _getSetupTabs().length;
+          _setupZone = 'tabs';
+          _getSetupTabs()[_setupTabIdx]?.click();
+          return true;
+        }
         if (activeTab === 'saved') {
           const row = Math.floor(_setupContentIdx / 4);
           const col = _setupContentIdx % 4;
@@ -397,6 +398,12 @@ const ViewSetup = (() => {
         _getSetupTabs()[_setupTabIdx]?.click();
       } else {
         const activeTab = document.querySelector('#view-setup .tab-btn.active')?.dataset.tab;
+        if (activeTab === 'settings') {
+          _setupTabIdx = _setupTabIdx === 0 ? _getSetupTabs().length - 1 : _setupTabIdx - 1;
+          _setupZone = 'tabs';
+          _getSetupTabs()[_setupTabIdx]?.click();
+          return true;
+        }
         if (activeTab === 'saved') {
           const row = Math.floor(_setupContentIdx / 4);
           const col = _setupContentIdx % 4;
