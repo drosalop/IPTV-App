@@ -149,7 +149,7 @@ const App = (() => {
     } catch(e) {
       SetupProgress.hide();
       if (e.name === 'AbortError') {
-        Router.showToast('Carga cancelada', 'info');
+        Router.showToast('Proceso de carga cancelado', 'info');
         if (prevList) {
           Store.set('currentList', prevList);
           Storage.setLastList(prevList.id);
