@@ -568,7 +568,7 @@ html, body {
 /* =====================================================
    PLAYER VIEW
    ===================================================== */
-#view-player { background: #000; }
+#view-player { background: transparent; }
 
 /* #av-player debe SIEMPRE rellenar su contenedor (video-layer).
    El agujero visible = tamaño del contenedor = lo que AVPlay debe mostrar. */
@@ -585,7 +585,7 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: transparent;
+  background: rgba(0,0,0,0.4);
 }
 .buffer-spinner.hidden { display: none; }
 

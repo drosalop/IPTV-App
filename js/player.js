@@ -37,6 +37,9 @@ const Player = (() => {
 
     App.showView('player');
     showOSD();
+    
+    // Petición EPG instantánea específica para este canal
+    _fetchShortEpg(ch);
 
     const vl = document.getElementById('video-layer');
     if (vl) {
@@ -53,13 +56,22 @@ const Player = (() => {
         if (playUrl.includes('|')) playUrl = playUrl.split('|')[0];
 
         webapis.avplay.open(playUrl);
-        try { webapis.avplay.setDisplayMethod('PLAYER_DISPLAY_MODE_CUSTOM'); } catch(e) {}
-        try { webapis.avplay.setDisplayRect(0, 0, 1920, 1079); } catch(e) {}
 
         // ── CONFIGURACIÓN SEGÚN MODO ──
-        _applyDisplayRect(false); // Configurar coords nativas, pero con DOM oculto
+        _applyDisplayRect();
 
-          webapis.avplay.setStreamingProperty('ADAPTIVE_INFO', 'STARTBITRATE=HIGHEST|BUFFERLENGTH=2');
+        try {
+          const name = (channel.name || '').toUpperCase();
+          const is8K = name.includes('8K');
+          const is4K = name.includes('4K') || name.includes('UHD') || name.includes('2160');
+          const isHD = name.includes('FHD') || name.includes('HD') || name.includes('1080');
+          const maxBr = is8K ? 80000000 : is4K ? 40000000 : isHD ? 20000000 : 10000000;
+          // Buffer adaptado: 2-3 segundos para evitar cortes
+          const bufMs = is8K ? 5000 : is4K ? 4000 : isHD ? 3000 : 3000;
+
+          webapis.avplay.setStreamingProperty('ADAPTIVE_INFO',
+            `STARTBITRATE=HIGHEST|MAXBITRATE=${maxBr}|BUFFERLENGTH=${Math.round(bufMs / 1000)}`);
+        } catch(e) {}
 
         webapis.avplay.setListener({
           onbufferingstart:    () => _onBufferingStart(),
@@ -95,21 +107,17 @@ const Player = (() => {
   // No usamos getBoundingClientRect() porque puede fallar si la vista está oculta.
   const PIP_X = 1400, PIP_Y = 770, PIP_W = 480, PIP_H = 270;
 
-  function _applyDisplayRect(makeVisible = false) {
+  function _applyDisplayRect() {
     const vl = document.getElementById('video-layer');
     if (_mode === 'FULLSCREEN') {
-      if (vl) { 
-        vl.style.left='0px'; vl.style.top='0px'; vl.style.width='1920px'; vl.style.height='1079px'; 
-        vl.style.visibility = makeVisible ? 'visible' : 'hidden';
-      }
-      try { webapis.avplay.setDisplayRect(0, 0, 1920, 1079); } catch(e) {}
+      if (vl) { vl.style.left='0px'; vl.style.top='0px'; vl.style.width='1920px'; vl.style.height='1080px'; }
+      try { webapis.avplay.setDisplayMethod('PLAYER_DISPLAY_MODE_FULL_SCREEN'); } catch(e) {}
+      try { webapis.avplay.setDisplayRect(0, 0, 1920, 1080); } catch(e) {}
     } else if (_mode === 'PIP') {
-      const pipBox = document.getElementById('pip-box');
-      if (vl) { 
-        vl.style.left=PIP_X+'px'; vl.style.top=PIP_Y+'px'; vl.style.width=PIP_W+'px'; vl.style.height=PIP_H+'px'; 
-        vl.style.visibility = makeVisible ? 'visible' : 'hidden';
-      }
-      if (pipBox) pipBox.style.background = makeVisible ? 'transparent' : '#000';
+      // Posicionar video-layer exactamente en el área PiP
+      if (vl) { vl.style.left=PIP_X+'px'; vl.style.top=PIP_Y+'px'; vl.style.width=PIP_W+'px'; vl.style.height=PIP_H+'px'; }
+      // FULL_SCREEN rellena el rect sin barras negras
+      try { webapis.avplay.setDisplayMethod('PLAYER_DISPLAY_MODE_FULL_SCREEN'); } catch(e) {}
       try { webapis.avplay.setDisplayRect(PIP_X, PIP_Y, PIP_W, PIP_H); } catch(e) {}
     }
   }
@@ -140,7 +148,7 @@ const Player = (() => {
     cancelPreview();
     _mode = 'FULLSCREEN';
     _hidePip();
-    _applyDisplayRect(true);
+    _applyDisplayRect();
   }
 
   // ── PREVIEW RÁPIDO AL NAVEGAR LA LISTA ───────────────
@@ -153,14 +161,11 @@ const Player = (() => {
     clearTimeout(_previewTimer);
     _previewTimer = setTimeout(() => {
       _startPip(ch);
-    }, 200); // Reducido a 200ms para máxima rapidez
+    }, 700); // 700ms para que no cambie con cada tecla
   }
 
   function cancelPreview() {
     clearTimeout(_previewTimer);
-    _safeStop();
-    const pipBox = document.getElementById('pip-box');
-    if (pipBox) pipBox.style.background = '#000'; // Inmediatamente volver a negro absoluto
   }
 
   function _startPip(ch) {
@@ -174,7 +179,9 @@ const Player = (() => {
     _mode = 'PIP';
     _setState('BUFFERING');
     _showPip(ch);
-    // Ya no oscurecemos el pip-box (pip-loading) para una navegación más limpia
+
+    const box = document.getElementById('pip-box');
+    if (box) box.classList.add('pip-loading');
 
     // NO ponemos video-layer en 1920x1080 aquí; _applyDisplayRect lo ajustará
 
@@ -183,34 +190,26 @@ const Player = (() => {
         let url = ch.url;
         if (url.includes('|')) url = url.split('|')[0];
         webapis.avplay.open(url);
-        try { webapis.avplay.setDisplayMethod('PLAYER_DISPLAY_MODE_CUSTOM'); } catch(e) {}
-        try { webapis.avplay.setDisplayRect(PIP_X, PIP_Y, PIP_W, PIP_H); } catch(e) {}
-        
-        _applyDisplayRect(false); // Configurar coords nativas ocultas
-        
-        try {
-          // Para el PiP usamos un buffer muy corto para que empiece casi al instante
-          webapis.avplay.setStreamingProperty('ADAPTIVE_INFO', `STARTBITRATE=HIGHEST|BUFFERLENGTH=1`);
-        } catch(e) {}
-
+        _applyDisplayRect();
         webapis.avplay.setListener({
           onbufferingstart:    () => _setState('BUFFERING'),
           onbufferingcomplete: () => {
             _setState('PLAYING');
             _retryCount = 0;
-            _applyDisplayRect(true); // Mostrar vídeo!
+            _applyDisplayRect(); // reconfirmar posición después de buffering
+            document.getElementById('pip-box')?.classList.remove('pip-loading');
           },
           oncurrentplaytime: () => {},
           onevent:  () => {},
-          onerror:  () => { _safeStop(); _hidePip(); },
+          onerror:  () => _hidePip(),
           ondrmevent: () => {},
           onstreamcompleted: () => {},
         });
         webapis.avplay.prepareAsync(
           () => { try { webapis.avplay.play(); } catch(e) {} },
-          () => { _safeStop(); _hidePip(); }
+          () => { _hidePip(); }
         );
-      } catch(e) { _safeStop(); _hidePip(); }
+      } catch(e) { _hidePip(); }
     }, 50);
   }
 
@@ -223,7 +222,6 @@ const Player = (() => {
         vl.style.top    = '0px';
         vl.style.width  = '0px';
         vl.style.height = '0px';
-        vl.style.visibility = 'hidden';
       }
       const s = webapis.avplay.getState();
       if (s !== 'NONE' && s !== 'IDLE') webapis.avplay.stop();
@@ -233,7 +231,7 @@ const Player = (() => {
 
   // ── EVENTS ───────────────────────────────────────────
   function _onBufferingStart()    { _setState('BUFFERING'); }
-  function _onBufferingComplete() { _setState('PLAYING'); _retryCount = 0; _applyDisplayRect(true); }
+  function _onBufferingComplete() { _setState('PLAYING'); _retryCount = 0; }
 
   function _onError(err) {
     console.error('AVPlay error', err);
@@ -255,16 +253,12 @@ const Player = (() => {
     }
 
     _retryCount = 0;
-    
-    // Solo mostramos la tarjeta de error gigante si estamos a pantalla completa
-    if (_isActive()) {
-      const errEl = document.getElementById('player-error');
-      if (errEl) errEl.classList.remove('hidden');
-      setTimeout(() => { 
-        if (errEl) errEl.classList.add('hidden');
-        if (_isActive()) App.showView('channels');
-      }, 4000);
-    }
+    const errEl = document.getElementById('player-error');
+    if (errEl) errEl.classList.remove('hidden');
+    setTimeout(() => { 
+      if (errEl) errEl.classList.add('hidden');
+      if (_isActive()) App.showView('channels');
+    }, 4000);
   }
 
   function _setState(s) {
@@ -297,10 +291,12 @@ const Player = (() => {
         _mode = 'PIP';
         App.showView('channels');
         _showPip(_current);
-        _applyDisplayRect(true); // coords fijas → no necesita esperar al DOM
+        _applyDisplayRect(); // coords fijas → no necesita esperar al DOM
         return true;
       }
     });
+
+    KeyHandler.on('GREEN', () => { if (_isActive()) { App.showView('epg'); return true; } });
 
     KeyHandler.on('PLAY_PAUSE', () => {
       if (_isActive()) {
@@ -405,22 +401,53 @@ const Player = (() => {
       }
     }
 
-    const clockEl = document.getElementById('osd-clock');
-    if (clockEl) {
-      const d = new Date();
-      const dateStr = d.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' }).replace(/\./g, '');
-      const timeStr = d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-      // Capitalizar la primera letra del día
-      const formattedDate = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
-      clockEl.textContent = `${formattedDate} • ${timeStr}`;
-    }
+    _updateEpgOSD();
 
     osd.classList.remove('hidden');
     clearTimeout(_osdTimer);
+    clearInterval(_osdPollInterval);
+
+    // Poll EPG in case it is still loading in background
+    _osdPollInterval = setInterval(_updateEpgOSD, 1000);
 
     _osdTimer = setTimeout(() => {
       osd.classList.add('hidden');
+      clearInterval(_osdPollInterval);
     }, 3000);
+  }
+
+  function _updateEpgOSD() {
+    if (!_current) return;
+    const nowEl = document.getElementById('osd-now');
+    const nextEl = document.getElementById('osd-next');
+    const clockEl = document.getElementById('osd-clock');
+
+    if (clockEl) {
+      clockEl.textContent = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+    }
+    
+    let nowP = null;
+    let nextP = null;
+
+    // 1. Try global EPG if available
+    if (typeof EPG !== 'undefined' && _current.epgId) {
+      nowP = EPG.getNow(_current.epgId);
+      if (!nextP) nextP = EPG.getNext(_current.epgId);
+    }
+    
+    // 2. Try short EPG fallback
+    if (!nowP && _current._shortEpgData) {
+      nowP = _current._shortEpgData.nowP;
+      nextP = _current._shortEpgData.nextP;
+    }
+
+    if (nowP) {
+      if (nowEl) nowEl.textContent = `Ahora: ${nowP.title} (${_fmt(nowP.start)} - ${_fmt(nowP.end)})`;
+      if (nextEl) nextEl.textContent = nextP ? `Después: ${nextP.title} (${_fmt(nextP.start)} - ${_fmt(nextP.end)})` : '';
+    } else {
+      if (nowEl) nowEl.textContent = _current._shortEpgFetched ? 'Sin información de programación' : 'Buscando programación...';
+      if (nextEl) nextEl.textContent = '';
+    }
   }
 
   async function _fetchShortEpg(ch) {
